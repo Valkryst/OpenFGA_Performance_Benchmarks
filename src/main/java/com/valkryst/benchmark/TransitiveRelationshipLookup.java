@@ -62,7 +62,6 @@ public class TransitiveRelationshipLookup extends BenchmarkBase{
             // create that relationship here.
             final var root = groups.get((i - 1) * HIERARCHY_DEPTH);
 
-            // todo Extract this out and make the write batched, because it's too slow as-is. Also need to delete them all.
             final var tuple = new ClientTupleKey();
             tuple.user(root.getObject()); // The object of the highest-level group is the actual root node.
             tuple.relation("reader");
