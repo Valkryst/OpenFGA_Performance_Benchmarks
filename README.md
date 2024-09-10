@@ -1,3 +1,5 @@
+[![Java CI with Maven](https://github.com/Valkryst/OpenFGA_Performance_Benchmarks/actions/workflows/maven.yml/badge.svg)](https://github.com/Valkryst/OpenFGA_Performance_Benchmarks/actions/workflows/maven.yml)
+
 ## Table of Contents
 
 * [Local Setup](#local-setup)
