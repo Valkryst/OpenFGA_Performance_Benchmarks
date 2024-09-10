@@ -2,10 +2,12 @@ package com.valkryst.benchmark;
 
 import dev.openfga.sdk.api.client.model.ClientCheckRequest;
 import dev.openfga.sdk.api.client.model.ClientTupleKey;
+import dev.openfga.sdk.api.client.model.ClientTupleKeyWithoutCondition;
 import dev.openfga.sdk.api.client.model.ClientWriteRequest;
 import dev.openfga.sdk.errors.FgaInvalidParameterException;
 import org.openjdk.jmh.annotations.*;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
@@ -35,7 +37,7 @@ public class RelationshipLookup extends BenchmarkBase {
     private final Queue<ClientTupleKey> nonExistentLookupQueue = new ConcurrentLinkedQueue<>();
 
     /** A list of tuples which have been written to the OpenFGA API, and which must be deleted. */
-    private final Queue<ClientTupleKey> deleteQueue = new ConcurrentLinkedQueue<>();
+    private final List<ClientTupleKeyWithoutCondition> deleteQueue = new ArrayList<>();
 
     @Setup
     public void setup() {
@@ -53,10 +55,10 @@ public class RelationshipLookup extends BenchmarkBase {
         final var body = new ClientWriteRequest();
 
         while (!deleteQueue.isEmpty()) {
-            final var tuple = deleteQueue.poll();
+            final var subset = deleteQueue.subList(0, Math.min(1000, deleteQueue.size()));
+            deleteQueue.removeAll(subset);
 
-            body.deletes(List.of(tuple));
-
+            body.deletes(subset);
             super.writeToOpenFGA(body);
         }
 
