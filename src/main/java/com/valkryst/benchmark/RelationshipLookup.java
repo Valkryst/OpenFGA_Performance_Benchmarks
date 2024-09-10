@@ -64,7 +64,7 @@ public class RelationshipLookup extends BenchmarkBase {
         nonExistentLookupQueue.clear();
     }
 
-//    @Benchmark
+    @Benchmark
     public void benchmarkExistingRelationships() {
         final var tuple = existentLookupQueue.poll();
         if (tuple == null) {
