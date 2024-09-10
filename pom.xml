@@ -28,7 +28,7 @@
         <dependency>
             <groupId>dev.openfga</groupId>
             <artifactId>openfga-sdk</artifactId>
-            <version>0.3.1</version>
+            <version>0.7.0</version>
         </dependency>
         <dependency> <!-- Used for loading the OpenFGA Authorization Model -->
             <groupId>com.fasterxml.jackson.core</groupId>
