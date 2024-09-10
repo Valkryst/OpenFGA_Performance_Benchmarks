@@ -1,12 +1,12 @@
 package com.valkryst.benchmark;
 
-import dev.openfga.sdk.api.client.model.ClientTupleKey;
+import dev.openfga.sdk.api.client.model.ClientTupleKeyWithoutCondition;
 import dev.openfga.sdk.api.client.model.ClientWriteRequest;
 import org.openjdk.jmh.annotations.*;
 
+import java.util.ArrayList;
 import java.util.List;
-import java.util.Queue;
-import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.NoSuchElementException;
 
 @State(Scope.Benchmark)
 public class RelationshipDeletion extends BenchmarkBase {
@@ -25,7 +25,7 @@ public class RelationshipDeletion extends BenchmarkBase {
     private static final int TOTAL_PRECREATED_RELATIONSHIPS = 40_000;
 
     /** A list of tuples which have been written to the OpenFGA API, and which must be deleted. */
-    private final Queue<ClientTupleKey> deleteQueue = new ConcurrentLinkedQueue<>();
+    private final List<ClientTupleKeyWithoutCondition> deleteQueue = new ArrayList<>();
 
     @Setup
     public void setup() {
@@ -39,25 +39,33 @@ public class RelationshipDeletion extends BenchmarkBase {
         final var body = new ClientWriteRequest();
 
         while (!deleteQueue.isEmpty()) {
-            final var tuple = deleteQueue.poll();
+            final var subset = deleteQueue.subList(0, Math.min(1000, deleteQueue.size()));
+            deleteQueue.removeAll(subset);
 
-            body.deletes(List.of(tuple));
-
+            body.deletes(subset);
             super.writeToOpenFGA(body);
         }
     }
 
     @Benchmark
     public void benchmark() {
-        final var tuple = deleteQueue.poll();
-        if (tuple == null) {
+        final ClientTupleKeyWithoutCondition tuple;
+        try {
+            tuple = deleteQueue.removeFirst();
+        } catch (final NoSuchElementException e) {
             System.err.println("Failed to retrieve tuple from deleteQueue. The queue is empty. Try increasing TOTAL_PRECREATED_RELATIONSHIPS.");
             System.exit(1);
+            return;
+        } catch (final Exception e) {
+            e.printStackTrace();
+            System.exit(1);
+            return;
         }
 
-        final var body = new ClientWriteRequest();
-        body.deletes(List.of(tuple));
-
-        super.writeToOpenFGA(body);
+        super.writeToOpenFGA(
+            new ClientWriteRequest().deletes(
+                List.of(tuple)
+            )
+        );
     }
 }
