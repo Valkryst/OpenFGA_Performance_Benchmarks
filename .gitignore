@@ -1,0 +1,6 @@
+/.idea/
+/out/
+/target/
+/volumes/cacerts/
+
+~/volumes/cacert/.gitkeep

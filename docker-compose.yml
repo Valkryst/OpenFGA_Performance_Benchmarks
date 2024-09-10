@@ -1,0 +1,76 @@
+services:
+  application:
+    build:
+      context: ./
+      dockerfile: Dockerfile
+    container_name: application
+    depends_on:
+      openfga:
+        condition: service_healthy
+    environment:
+      - OPENFGA_API_TOKEN=12345
+      - OPENFGA_API_URL=https://openfga:8080
+    networks:
+      - openfga
+
+  migrate:
+    command: migrate
+    container_name: migrate
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      - OPENFGA_DATASTORE_ENGINE=postgres
+      - OPENFGA_DATASTORE_URI=postgres://postgres:password@postgres:5432/postgres?sslmode=disable
+    image: openfga/openfga:latest
+    networks:
+      - openfga
+
+  openfga:
+    command:
+      - "run"
+      - "--authn-method=preshared"
+      - "--authn-preshared-keys=12345"
+      - "--http-tls-enabled=true"
+      - "--http-tls-cert=/app/cacerts/tls.crt"
+      - "--http-tls-key=/app/cacerts/tls.key"
+      - "--log-level=debug"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    environment:
+      - OPENFGA_DATASTORE_ENGINE=postgres
+      - OPENFGA_DATASTORE_URI=postgres://postgres:password@postgres:5432/postgres?sslmode=disable
+      - OPENFGA_LOG_FORMAT=json
+    healthcheck:
+      test: ["CMD", "/usr/local/bin/grpc_health_probe", "-addr=localhost:8081"]
+      interval: 5s
+      timeout: 5s
+      retries: 3
+    image: openfga/openfga:latest
+    networks:
+      - openfga
+    ports:
+      - "3000:3000"
+      - "8080:8080"
+    volumes:
+      - ./volumes/cacerts:/app/cacerts
+
+  postgres:
+    container_name: postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    image: postgres:latest
+    networks:
+      - openfga
+    ports:
+      - "5432:5432"
+
+networks:
+  openfga:
