@@ -64,7 +64,7 @@ public class RelationshipCreation extends BenchmarkBase {
         }
     }
 
-//    @Benchmark
+    @Benchmark
     public void benchmark() {
         final var tuple = writeQueue.poll();
         if (tuple == null) {

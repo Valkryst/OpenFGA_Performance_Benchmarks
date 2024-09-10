@@ -61,7 +61,7 @@ public class RelationshipDeletion extends BenchmarkBase {
         }
     }
 
-//    @Benchmark
+    @Benchmark
     public void benchmark() {
         final var tuple = deleteQueue.poll();
         if (tuple == null) {

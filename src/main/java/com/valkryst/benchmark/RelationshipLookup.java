@@ -4,10 +4,7 @@ import dev.openfga.sdk.api.client.model.ClientCheckRequest;
 import dev.openfga.sdk.api.client.model.ClientTupleKey;
 import dev.openfga.sdk.api.client.model.ClientWriteRequest;
 import dev.openfga.sdk.errors.FgaInvalidParameterException;
-import org.openjdk.jmh.annotations.Scope;
-import org.openjdk.jmh.annotations.Setup;
-import org.openjdk.jmh.annotations.State;
-import org.openjdk.jmh.annotations.TearDown;
+import org.openjdk.jmh.annotations.*;
 
 import java.util.List;
 import java.util.Queue;
@@ -113,7 +110,7 @@ public class RelationshipLookup extends BenchmarkBase {
         }
     }
 
-//    @Benchmark
+    @Benchmark
     public void benchmarkNonexistentRelationships() {
         final var tuple = nonExistentLookupQueue.poll();
         if (tuple == null) {
