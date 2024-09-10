@@ -25,9 +25,6 @@ public class RelationshipCreation extends BenchmarkBase {
     /** A pool of pre-created tuples which can be used to write relationships to the OpenFGA API. */
     private final Queue<ClientTupleKey> writeQueue = new ConcurrentLinkedQueue<>();
 
-    /** A list of tuples which have been written to the OpenFGA API, and which must be deleted. */
-    private final Queue<ClientTupleKey> deleteQueue = new ConcurrentLinkedQueue<>();
-
     @Setup
     public void setup() {
         for (int i = 0 ; i < TOTAL_PRECREATED_RELATIONSHIPS ; i++) {
@@ -41,14 +38,7 @@ public class RelationshipCreation extends BenchmarkBase {
 
     @TearDown
     public void teardown() {
-        final var body = new ClientWriteRequest();
-
-        while (!deleteQueue.isEmpty()) {
-            final var tuple = deleteQueue.poll();
-
-            body.deletes(List.of(tuple));
-            super.writeToOpenFGA(body);
-        }
+        super.teardown();
     }
 
     @Benchmark
@@ -64,6 +54,6 @@ public class RelationshipCreation extends BenchmarkBase {
 
         super.writeToOpenFGA(body);
 
-        deleteQueue.offer(tuple);
+        super.deleteQueue.add(tuple);
     }
 }

@@ -85,13 +85,13 @@ public class TransitiveRelationshipLookup extends BenchmarkBase{
 
     @TearDown
     public void teardown() {
+        // todo Resolve issue, then update this to use super.deleteQueue
         final var body = new ClientWriteRequest();
 
         while (!deleteQueue.isEmpty()) {
             final var subset = deleteQueue.subList(0, Math.min(1000, deleteQueue.size()));
             body.deletes(deleteQueue);
 
-            // todo Resolve issue, then replace with super.writeToOpenFGA(body);
             try {
                 final var response = super.openFgaClient.write(body, null).get();
                 if (response.getStatusCode() != 200) {

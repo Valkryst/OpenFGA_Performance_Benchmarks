@@ -2,13 +2,9 @@ package com.valkryst.benchmark;
 
 import dev.openfga.sdk.api.client.model.ClientCheckRequest;
 import dev.openfga.sdk.api.client.model.ClientTupleKey;
-import dev.openfga.sdk.api.client.model.ClientTupleKeyWithoutCondition;
-import dev.openfga.sdk.api.client.model.ClientWriteRequest;
 import dev.openfga.sdk.errors.FgaInvalidParameterException;
 import org.openjdk.jmh.annotations.*;
 
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ExecutionException;
@@ -36,14 +32,11 @@ public class RelationshipLookup extends BenchmarkBase {
     /** A list of tuples which <i>have not</i> been written to the OpenFGA API, and which can be used to lookup relationships. */
     private final Queue<ClientTupleKey> nonExistentLookupQueue = new ConcurrentLinkedQueue<>();
 
-    /** A list of tuples which have been written to the OpenFGA API, and which must be deleted. */
-    private final List<ClientTupleKeyWithoutCondition> deleteQueue = new ArrayList<>();
-
     @Setup
     public void setup() {
-        existentLookupQueue.addAll(
-            super.createUsers(TOTAL_PRECREATED_RELATIONSHIPS, 1000, true)
-        );
+        final var users = super.createUsers(TOTAL_PRECREATED_RELATIONSHIPS, 1000, true);
+        existentLookupQueue.addAll(users);
+        super.deleteQueue.addAll(users);
 
         nonExistentLookupQueue.addAll(
             super.createUsers(TOTAL_PRECREATED_RELATIONSHIPS, 1000, false)
@@ -52,15 +45,7 @@ public class RelationshipLookup extends BenchmarkBase {
 
     @TearDown
     public void teardown() {
-        final var body = new ClientWriteRequest();
-
-        while (!deleteQueue.isEmpty()) {
-            final var subset = deleteQueue.subList(0, Math.min(1000, deleteQueue.size()));
-            deleteQueue.removeAll(subset);
-
-            body.deletes(subset);
-            super.writeToOpenFGA(body);
-        }
+        super.teardown();
 
         existentLookupQueue.clear();
         nonExistentLookupQueue.clear();

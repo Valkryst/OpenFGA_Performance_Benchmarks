@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.openfga.sdk.api.client.OpenFgaClient;
 import dev.openfga.sdk.api.client.model.ClientTupleKey;
+import dev.openfga.sdk.api.client.model.ClientTupleKeyWithoutCondition;
 import dev.openfga.sdk.api.client.model.ClientWriteRequest;
 import dev.openfga.sdk.api.configuration.ApiToken;
 import dev.openfga.sdk.api.configuration.ClientConfiguration;
@@ -23,6 +24,9 @@ import java.util.concurrent.ExecutionException;
 public class BenchmarkBase {
     /** Client used when interacting with the OpenFGA API. */
     protected OpenFgaClient openFgaClient;
+
+    /** A list of tuples which have been written to the OpenFGA API, and which must be deleted. */
+    protected List<ClientTupleKeyWithoutCondition> deleteQueue = new ArrayList<>();
 
     public BenchmarkBase() {
         final var config = new ClientConfiguration();
@@ -126,6 +130,19 @@ public class BenchmarkBase {
         } catch (final FgaInvalidParameterException | InterruptedException | JsonProcessingException e) {
             e.printStackTrace();
             System.exit(1);
+        }
+    }
+
+    /** Deletes all tuples in the {@link #deleteQueue}, from the OpenFGA API, and clears the queue. */
+    protected void teardown() {
+        final var body = new ClientWriteRequest();
+
+        while (!deleteQueue.isEmpty()) {
+            final var subset = new ArrayList<>(deleteQueue.subList(0, Math.min(1000, deleteQueue.size())));
+            deleteQueue.removeAll(subset);
+
+            body.deletes(subset);
+            writeToOpenFGA(body);
         }
     }
 

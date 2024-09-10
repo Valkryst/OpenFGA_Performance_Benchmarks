@@ -4,7 +4,6 @@ import dev.openfga.sdk.api.client.model.ClientTupleKeyWithoutCondition;
 import dev.openfga.sdk.api.client.model.ClientWriteRequest;
 import org.openjdk.jmh.annotations.*;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.NoSuchElementException;
 
@@ -24,34 +23,23 @@ public class RelationshipDeletion extends BenchmarkBase {
      */
     private static final int TOTAL_PRECREATED_RELATIONSHIPS = 40_000;
 
-    /** A list of tuples which have been written to the OpenFGA API, and which must be deleted. */
-    private final List<ClientTupleKeyWithoutCondition> deleteQueue = new ArrayList<>();
-
     @Setup
     public void setup() {
-        deleteQueue.addAll(
+        super.deleteQueue.addAll(
             super.createUsers(TOTAL_PRECREATED_RELATIONSHIPS, 1000, true)
         );
     }
 
     @TearDown
     public void teardown() {
-        final var body = new ClientWriteRequest();
-
-        while (!deleteQueue.isEmpty()) {
-            final var subset = deleteQueue.subList(0, Math.min(1000, deleteQueue.size()));
-            deleteQueue.removeAll(subset);
-
-            body.deletes(subset);
-            super.writeToOpenFGA(body);
-        }
+        super.teardown();
     }
 
     @Benchmark
     public void benchmark() {
         final ClientTupleKeyWithoutCondition tuple;
         try {
-            tuple = deleteQueue.removeFirst();
+            tuple = super.deleteQueue.removeFirst();
         } catch (final NoSuchElementException e) {
             System.err.println("Failed to retrieve tuple from deleteQueue. The queue is empty. Try increasing TOTAL_PRECREATED_RELATIONSHIPS.");
             System.exit(1);
