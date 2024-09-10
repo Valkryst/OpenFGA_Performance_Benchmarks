@@ -146,7 +146,13 @@ public class TransitiveRelationshipLookup extends BenchmarkBase{
             e.printStackTrace();
             System.exit(1);
         } catch (final ExecutionException e) {
-            e.getCause().printStackTrace();
+            final var cause = e.getCause();
+            if (cause instanceof FgaApiValidationError) {
+                System.err.println("Validation Error: " + ((FgaApiValidationError) cause).getResponseData());
+            } else {
+                e.printStackTrace();
+            }
+
             System.exit(1);
         }
     }
