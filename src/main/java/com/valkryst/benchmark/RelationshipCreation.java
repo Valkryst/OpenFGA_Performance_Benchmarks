@@ -2,12 +2,12 @@ package com.valkryst.benchmark;
 
 import dev.openfga.sdk.api.client.model.ClientTupleKey;
 import dev.openfga.sdk.api.client.model.ClientWriteRequest;
-import dev.openfga.sdk.errors.FgaInvalidParameterException;
 import org.openjdk.jmh.annotations.*;
 
-import java.util.*;
+import java.util.List;
+import java.util.Queue;
+import java.util.UUID;
 import java.util.concurrent.ConcurrentLinkedQueue;
-import java.util.concurrent.ExecutionException;
 
 @State(Scope.Benchmark)
 public class RelationshipCreation extends BenchmarkBase {
@@ -47,20 +47,7 @@ public class RelationshipCreation extends BenchmarkBase {
             final var tuple = deleteQueue.poll();
 
             body.deletes(List.of(tuple));
-
-            try {
-                final var response = super.openFgaClient.write(body, null).get();
-                if (response.getStatusCode() != 200) {
-                    System.err.println("Failed to delete relationship:\n" + response.getRawResponse());
-                    System.exit(1);
-                }
-            } catch (final FgaInvalidParameterException | InterruptedException e) {
-                e.printStackTrace();
-                System.exit(1);
-            } catch (final ExecutionException e) {
-                e.getCause().printStackTrace();
-                System.exit(1);
-            }
+            super.writeToOpenFGA(body);
         }
     }
 
@@ -75,20 +62,8 @@ public class RelationshipCreation extends BenchmarkBase {
         final var body = new ClientWriteRequest();
         body.writes(List.of(tuple));
 
-        try {
-            final var response = super.openFgaClient.write(body, null).get();
-            if (response.getStatusCode() != 200) {
-                System.err.println("Failed to create relationship:\n" + response.getRawResponse());
-                System.exit(1);
-            }
+        super.writeToOpenFGA(body);
 
-            deleteQueue.offer(tuple);
-        } catch (final FgaInvalidParameterException | InterruptedException e) {
-            e.printStackTrace();
-            System.exit(1);
-        } catch (final ExecutionException e) {
-            e.getCause().printStackTrace();
-            System.exit(1);
-        }
+        deleteQueue.offer(tuple);
     }
 }

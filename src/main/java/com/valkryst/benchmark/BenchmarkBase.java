@@ -173,20 +173,7 @@ public class BenchmarkBase {
             }
 
             body.writes(tuples);
-
-            try {
-                final var response = openFgaClient.write(body, null).get();
-                if (response.getStatusCode() != 200) {
-                    System.err.println(response.getRawResponse());
-                    System.exit(1);
-                }
-            } catch (final FgaInvalidParameterException | InterruptedException e) {
-                e.printStackTrace();
-                System.exit(1);
-            } catch (final ExecutionException e) {
-                e.getCause().printStackTrace();
-                System.exit(1);
-            }
+            writeToOpenFGA(body);
 
             groups.addAll(tuples);
             totalGroups -= batchSize;
@@ -261,25 +248,39 @@ public class BenchmarkBase {
             }
 
             body.writes(tuples);
-
-            try {
-                final var response = openFgaClient.write(body, null).get();
-                if (response.getStatusCode() != 200) {
-                    System.err.println(response.getRawResponse());
-                    System.exit(1);
-                }
-            } catch (final FgaInvalidParameterException | InterruptedException e) {
-                e.printStackTrace();
-                System.exit(1);
-            } catch (final ExecutionException e) {
-                e.getCause().printStackTrace();
-                System.exit(1);
-            }
+            writeToOpenFGA(body);
 
             users.addAll(tuples);
             totalUsers -= batchSize;
         }
 
         return users;
+    }
+
+    /**
+     * Sends a write request to OpenFGA.
+     *
+     * @param body Request body.
+     */
+    protected void writeToOpenFGA(final @NonNull ClientWriteRequest body) {
+        try {
+            final var response = openFgaClient.write(body, null).get();
+            if (response.getStatusCode() != 200) {
+                System.err.println(response.getRawResponse());
+                System.exit(1);
+            }
+        } catch (final FgaInvalidParameterException | InterruptedException e) {
+            e.printStackTrace();
+            System.exit(1);
+        } catch (final ExecutionException e) {
+            final var cause = e.getCause();
+            if (cause instanceof FgaApiValidationError) {
+                System.err.println("Validation Error: " + ((FgaApiValidationError) cause).getResponseData());
+            } else {
+                e.printStackTrace();
+            }
+
+            System.exit(1);
+        }
     }
 }

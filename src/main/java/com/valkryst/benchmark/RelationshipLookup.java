@@ -57,19 +57,7 @@ public class RelationshipLookup extends BenchmarkBase {
 
             body.deletes(List.of(tuple));
 
-            try {
-                final var response = super.openFgaClient.write(body, null).get();
-                if (response.getStatusCode() != 200) {
-                    System.err.println("Failed to delete relationship:\n" + response.getRawResponse());
-                    System.exit(1);
-                }
-            } catch (final FgaInvalidParameterException | InterruptedException e) {
-                e.printStackTrace();
-                System.exit(1);
-            } catch (final ExecutionException e) {
-                e.getCause().printStackTrace();
-                System.exit(1);
-            }
+            super.writeToOpenFGA(body);
         }
 
         existentLookupQueue.clear();

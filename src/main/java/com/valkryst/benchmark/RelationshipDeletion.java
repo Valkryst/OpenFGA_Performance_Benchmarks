@@ -2,13 +2,11 @@ package com.valkryst.benchmark;
 
 import dev.openfga.sdk.api.client.model.ClientTupleKey;
 import dev.openfga.sdk.api.client.model.ClientWriteRequest;
-import dev.openfga.sdk.errors.FgaInvalidParameterException;
 import org.openjdk.jmh.annotations.*;
 
 import java.util.List;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
-import java.util.concurrent.ExecutionException;
 
 @State(Scope.Benchmark)
 public class RelationshipDeletion extends BenchmarkBase {
@@ -45,19 +43,7 @@ public class RelationshipDeletion extends BenchmarkBase {
 
             body.deletes(List.of(tuple));
 
-            try {
-                final var response = super.openFgaClient.write(body, null).get();
-                if (response.getStatusCode() != 200) {
-                    System.err.println("Failed to delete relationship:\n" + response.getRawResponse());
-                    System.exit(1);
-                }
-            } catch (final FgaInvalidParameterException | InterruptedException e) {
-                e.printStackTrace();
-                System.exit(1);
-            } catch (final ExecutionException e) {
-                e.getCause().printStackTrace();
-                System.exit(1);
-            }
+            super.writeToOpenFGA(body);
         }
     }
 
@@ -72,18 +58,6 @@ public class RelationshipDeletion extends BenchmarkBase {
         final var body = new ClientWriteRequest();
         body.deletes(List.of(tuple));
 
-        try {
-            final var response = super.openFgaClient.write(body, null).get();
-            if (response.getStatusCode() != 200) {
-                System.err.println("Failed to delete relationship:\n" + response.getRawResponse());
-                System.exit(1);
-            }
-        } catch (final FgaInvalidParameterException | InterruptedException e) {
-            e.printStackTrace();
-            System.exit(1);
-        } catch (final ExecutionException e) {
-            e.getCause().printStackTrace();
-            System.exit(1);
-        }
+        super.writeToOpenFGA(body);
     }
 }

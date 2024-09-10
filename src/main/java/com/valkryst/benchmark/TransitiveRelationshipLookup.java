@@ -78,19 +78,7 @@ public class TransitiveRelationshipLookup extends BenchmarkBase{
             final var subset = newGroups.subList(0, Math.min(1000, newGroups.size()));
             body.writes(subset);
 
-            try {
-                final var response = openFgaClient.write(body, null).get();
-                if (response.getStatusCode() != 200) {
-                    System.err.println(response.getRawResponse());
-                    System.exit(1);
-                }
-            } catch (final FgaInvalidParameterException | InterruptedException e) {
-                e.printStackTrace();
-                System.exit(1);
-            } catch (final ExecutionException e) {
-                e.getCause().printStackTrace();
-                System.exit(1);
-            }
+            super.writeToOpenFGA(body);
 
             newGroups.removeAll(subset);
         }
@@ -104,6 +92,7 @@ public class TransitiveRelationshipLookup extends BenchmarkBase{
             final var subset = deleteQueue.subList(0, Math.min(1000, deleteQueue.size()));
             body.deletes(deleteQueue);
 
+            // todo Resolve issue, then replace with super.writeToOpenFGA(body);
             try {
                 final var response = super.openFgaClient.write(body, null).get();
                 if (response.getStatusCode() != 200) {
