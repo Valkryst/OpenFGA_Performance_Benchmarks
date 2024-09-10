@@ -19,8 +19,8 @@ import java.util.concurrent.ExecutionException;
 public class TransitiveRelationshipLookup extends BenchmarkBase{
     /**
      * <p>
-     *     The number of relationships (in this case, they're leaf nodes of group hierarchies) to pre-create and add to
-     *     the {@link #lookupQueue}, and to write to the OpenFGA API, before the benchmark begins.
+     *     The number of relationships (in this case, they're group hierarchies) to pre-create and add to the
+     *     {@link #lookupQueue}, and to write to the OpenFGA API, before the benchmark begins.
      * </p>
      *
      * <p>
