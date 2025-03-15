@@ -1,6 +1,7 @@
 /.idea/
 /out/
 /target/
-/volumes/cacerts/
+/volumes/tls_certificates/
 
 ~/volumes/cacert/.gitkeep
+~/volumes/openfga/*

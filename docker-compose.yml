@@ -6,71 +6,59 @@ services:
     container_name: application
     depends_on:
       openfga:
+        condition: service_started
+      postgres:
         condition: service_healthy
-    environment:
-      - OPENFGA_API_TOKEN=12345
-      - OPENFGA_API_URL=https://openfga:8080
+    env_file: .env
     networks:
       - openfga
+    volumes:
+      - ./volumes/openfga:/tmp/openfga
 
-  migrate:
-    command: migrate
-    container_name: migrate
+  openfga:
+    build:
+      args:
+        - OPENFGA_CLI_VERSION=${OPENFGA_CLI_VERSION}
+        - OPENFGA_VERSION=${OPENFGA_VERSION}
+      context: ./
+      dockerfile: Dockerfile.openfga
     depends_on:
       postgres:
         condition: service_healthy
-    environment:
-      - OPENFGA_DATASTORE_ENGINE=postgres
-      - OPENFGA_DATASTORE_URI=postgres://postgres:password@postgres:5432/postgres?sslmode=disable
-    image: openfga/openfga:latest
-    networks:
-      - openfga
-
-  openfga:
-    command:
-      - "run"
-      - "--authn-method=preshared"
-      - "--authn-preshared-keys=12345"
-      - "--http-tls-enabled=true"
-      - "--http-tls-cert=/app/cacerts/tls.crt"
-      - "--http-tls-key=/app/cacerts/tls.key"
-      - "--log-level=debug"
-    depends_on:
-      migrate:
-        condition: service_completed_successfully
-    environment:
-      - OPENFGA_DATASTORE_ENGINE=postgres
-      - OPENFGA_DATASTORE_URI=postgres://postgres:password@postgres:5432/postgres?sslmode=disable
-      - OPENFGA_LOG_FORMAT=json
-    healthcheck:
-      test: ["CMD", "/usr/local/bin/grpc_health_probe", "-addr=localhost:8081"]
-      interval: 5s
-      timeout: 5s
-      retries: 3
-    image: openfga/openfga:latest
+    env_file: .env
     networks:
       - openfga
     ports:
       - "3000:3000"
       - "8080:8080"
     volumes:
-      - ./volumes/cacerts:/app/cacerts
+      - ./volumes/tls_certificates:/usr/local/share/ca-certificates
 
   postgres:
+    build:
+      context: ./
+      dockerfile: Dockerfile.postgres
     container_name: postgres
+    env_file: .env
     environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: password
+      PGCLIENTENCODING: UTF8
+      PGPORT: ${DB_PORT}
+      PGTZ: UTC
+      POSTGRES_USER: ${DB_USERNAME}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 5s
       timeout: 5s
       retries: 5
-    image: postgres:latest
     networks:
       - openfga
     ports:
       - "5432:5432"
+    volumes:
+      - ./volumes/tls_certificates:/usr/local/share/ca-certificates
+      - ./volumes/database/init.sh:/docker-entrypoint-initdb.d/init.sh
+      - ./volumes/database/postgresql.conf:/etc/postgresql.conf
 
 networks:
   openfga:

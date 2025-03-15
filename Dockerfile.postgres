@@ -1,0 +1,11 @@
+FROM postgres:17.2
+
+# Copy the SSL certificates.
+COPY ./volumes/tls_certificates/tls.crt /usr/local/share/ca-certificates/tls.crt
+COPY ./volumes/tls_certificates/tls.key /usr/local/share/ca-certificates/tls.key
+
+# Set the correct permissions for the private key file.
+RUN chmod 0600 /usr/local/share/ca-certificates/tls.key && \
+    chown postgres:postgres /usr/local/share/ca-certificates/tls.key
+
+CMD ["postgres", "-c", "config_file=/etc/postgresql.conf"]

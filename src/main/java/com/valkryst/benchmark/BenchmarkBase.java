@@ -15,13 +15,18 @@ import dev.openfga.sdk.errors.FgaApiValidationError;
 import dev.openfga.sdk.errors.FgaInvalidParameterException;
 import lombok.NonNull;
 
+import java.io.*;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 
 public class BenchmarkBase {
+    /** Path to the OpenFGA Authorization Model file. */
+    private static final String MODEL_FILE_PATH = "/openfga/model.json";
+
     /** Client used when interacting with the OpenFGA API. */
     protected OpenFgaClient openFgaClient;
 
@@ -29,11 +34,9 @@ public class BenchmarkBase {
     protected List<ClientTupleKeyWithoutCondition> deleteQueue = new ArrayList<>();
 
     public BenchmarkBase() {
-        final var config = new ClientConfiguration();
-        config.apiUrl(System.getenv("OPENFGA_API_URL"));
-        config.credentials(new Credentials(new ApiToken(System.getenv("OPENFGA_API_TOKEN"))));
-
         try {
+            final var config = new ClientConfiguration();
+            config.apiUrl(this.getEnvironmentVariable("OPENFGA_API_URL"));
             openFgaClient = new OpenFgaClient(config);
         } catch (final FgaInvalidParameterException e) {
             e.printStackTrace();
@@ -41,96 +44,17 @@ public class BenchmarkBase {
         }
 
         // We can't write the authorization model until a valid Store ID has been set.
-        final var storeId = createStore(openFgaClient);
-        if (storeId.isEmpty()) {
-            System.exit(1);
-        } else {
-            openFgaClient.setStoreId(storeId.get());
-        }
-
-        try {
-            final var mapper = new ObjectMapper().findAndRegisterModules();
-            final var response = openFgaClient.writeAuthorizationModel(
-                // 2024-09-09 12:00:01 Validation Error: {"code":"invalid_authorization_model","message":"the relation type 'user#member' on 'member' in object type 'group' is not valid"}
-                mapper.readValue(
-                    """
-                        {
-                            "schema_version": "1.1",
-                            "type_definitions": [
-                                {
-                                    "type": "group",
-                                    "relations": {
-                                        "member": {
-                                            "this": {}
-                                        },
-                                        "subgroup": {
-                                            "this": {}
-                                        }
-                                    },
-                                    "metadata": {
-                                        "relations": {
-                                            "member": {
-                                                "directly_related_user_types": [
-                                                    {
-                                                        "type": "user"
-                                                    }
-                                                ]
-                                            },
-                                            "subgroup": {
-                                                "directly_related_user_types": [
-                                                    {
-                                                        "type": "group"
-                                                    }
-                                                ]
-                                            }
-                                        }
-                                    }
-                                },
-                                {
-                                    "type": "report",
-                                    "relations": {
-                                        "reader": {
-                                            "this": {}
-                                        }
-                                    },
-                                    "metadata": {
-                                        "relations": {
-                                            "reader": {
-                                                "directly_related_user_types": [
-                                                    {
-                                                        "type": "group"
-                                                    },
-                                                    {
-                                                        "type": "user"
-                                                    }
-                                                ]
-                                            }
-                                        }
-                                    }
-                                },
-                                {
-                                    "type": "user"
-                                }
-                            ]
-                        }
-                    """,
-                    WriteAuthorizationModelRequest.class
-                )
-            ).get();
-
-            openFgaClient.setAuthorizationModelId(response.getAuthorizationModelId());
-        } catch (final ExecutionException e) {
-            final var cause = e.getCause();
-            if (cause instanceof FgaApiValidationError) {
-                System.err.println("Validation Error: " + ((FgaApiValidationError) cause).getResponseData());
-            } else {
-                e.printStackTrace();
-            }
-            System.exit(1);
-        } catch (final FgaInvalidParameterException | InterruptedException | JsonProcessingException e) {
-            e.printStackTrace();
+        var id = createStore(openFgaClient);
+        if (id.isEmpty()) {
             System.exit(1);
         }
+        openFgaClient.setStoreId(id.get());
+
+        id = this.createAuthorizationModel(openFgaClient);
+        if (id.isEmpty()) {
+            System.exit(1);
+        }
+        openFgaClient.setAuthorizationModelId(id.get());
     }
 
     /** Deletes all tuples in the {@link #deleteQueue}, from the OpenFGA API, and clears the queue. */
@@ -299,5 +223,73 @@ public class BenchmarkBase {
 
             System.exit(1);
         }
+    }
+
+    /**
+     * Creates a new Authorization Model within OpenFGA, using the Authorization Model file located at
+     * {@link #MODEL_FILE_PATH}.
+     *
+     * @param client {@link OpenFgaClient} to create the Authorization Model with.
+     * @return ID of the created Authorization Model, or an empty {@link Optional} if the creation failed.
+     */
+    private Optional<String> createAuthorizationModel(final @NonNull OpenFgaClient client) {
+        final var stringBuilder = new StringBuilder();
+        try (
+            final var inputStream = this.getClass().getResourceAsStream(MODEL_FILE_PATH);
+            final var inputStreamReader = new InputStreamReader(inputStream);
+            final var bufferedReader = new BufferedReader(inputStreamReader);
+        ) {
+            while (bufferedReader.ready()) {
+                stringBuilder.append(bufferedReader.readLine());
+            }
+        } catch (final IOException e) {
+            e.printStackTrace();
+            return Optional.empty();
+        }
+
+        if (stringBuilder.isEmpty()) {
+            throw new RuntimeException("The OpenFGA Authorization Model file is empty.");
+        }
+
+        try {
+            return client.writeAuthorizationModel(
+                new ObjectMapper().findAndRegisterModules().readValue(
+                    stringBuilder.toString(),
+                    WriteAuthorizationModelRequest.class
+                )
+            ).get().getAuthorizationModelId().describeConstable();
+        } catch (final FgaInvalidParameterException | InterruptedException | JsonProcessingException e) {
+            e.printStackTrace();
+            return Optional.empty();
+        } catch (final ExecutionException e) {
+            final var cause = e.getCause();
+            if (cause instanceof FgaApiValidationError) {
+                System.err.println("Validation Error: " + ((FgaApiValidationError) cause).getResponseData());
+            } else {
+                e.printStackTrace();
+            }
+
+            return Optional.empty();
+        }
+    }
+
+    /**
+     * Retrieves the value of an environment variable.
+     *
+     * @param key Key of the environment variable.
+     * @return Value of the environment variable.
+     *
+     * @throws FgaInvalidParameterException If the key is blank or the environment variable is not set or is blank.
+     */
+    private String getEnvironmentVariable(final @NonNull String key) throws FgaInvalidParameterException {
+        if (key.isBlank()) {
+            throw new IllegalArgumentException("The key for the environment variable cannot be blank.");
+        }
+
+        final var value = System.getenv(key);
+        if (value == null || value.isBlank()) {
+            throw new FgaInvalidParameterException("The '" + key + "' environment variable is either not set or is blank.");
+        }
+        return value;
     }
 }

@@ -1,0 +1,25 @@
+FROM debian:stable-slim
+
+RUN apt-get update && apt-get install -y git jq wget
+
+# Install Go
+RUN wget https://golang.org/dl/go1.23.5.linux-amd64.tar.gz && \
+    rm -rf /usr/local/go && \
+    tar -C /usr/local -xzf go1.23.5.linux-amd64.tar.gz
+ENV PATH=$PATH:/usr/local/go/bin
+
+# Install OpenFGA
+ARG OPENFGA_VERSION
+RUN go install github.com/openfga/openfga/cmd/openfga@v${OPENFGA_VERSION}
+ENV PATH=$PATH:/root/go/bin
+
+# Install OpenFGA CLI
+ARG OPENFGA_CLI_VERSION
+RUN wget https://github.com/openfga/cli/releases/download/v${OPENFGA_CLI_VERSION}/fga_${OPENFGA_CLI_VERSION}_linux_amd64.deb -O /tmp/fga.deb \
+    && apt-get install -y /tmp/fga.deb \
+    && rm /tmp/fga.deb
+
+# Copy-in the Authorization Model
+COPY /volumes/openfga /tmp/openfga
+
+CMD ["bash", "-c", "update-ca-certificates && openfga migrate && openfga run"]
