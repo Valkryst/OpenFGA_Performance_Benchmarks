@@ -13,6 +13,7 @@ services:
     networks:
       - openfga
     volumes:
+      - ./logs:/app/logs
       - ./volumes/openfga:/tmp/openfga
 
   openfga:
