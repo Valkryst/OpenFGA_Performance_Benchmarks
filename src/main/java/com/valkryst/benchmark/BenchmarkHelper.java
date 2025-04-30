@@ -1,23 +1,24 @@
 package com.valkryst.benchmark;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.openfga.sdk.api.client.OpenFgaClient;
 import dev.openfga.sdk.api.client.model.ClientTupleKey;
 import dev.openfga.sdk.api.client.model.ClientTupleKeyWithoutCondition;
 import dev.openfga.sdk.api.client.model.ClientWriteRequest;
+import dev.openfga.sdk.api.configuration.ApiToken;
 import dev.openfga.sdk.api.configuration.ClientConfiguration;
+import dev.openfga.sdk.api.configuration.Credentials;
 import dev.openfga.sdk.api.model.CreateStoreRequest;
 import dev.openfga.sdk.api.model.WriteAuthorizationModelRequest;
 import dev.openfga.sdk.errors.FgaApiValidationError;
 import dev.openfga.sdk.errors.FgaInvalidParameterException;
 import lombok.NonNull;
 
-import java.io.*;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.util.*;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 
 public class BenchmarkHelper {
@@ -25,34 +26,10 @@ public class BenchmarkHelper {
     private static final String MODEL_FILE_PATH = "/openfga/model.json";
 
     /** Client used when interacting with the OpenFGA API. */
-    protected OpenFgaClient openFgaClient;
+    private OpenFgaClient openFgaClient;
 
     /** A list of tuples which have been written to the OpenFGA API, and which must be deleted. */
     protected List<ClientTupleKeyWithoutCondition> deleteQueue = new ArrayList<>();
-
-    public BenchmarkHelper() {
-        try {
-            final var config = new ClientConfiguration();
-            config.apiUrl(this.getEnvironmentVariable("OPENFGA_API_URL"));
-            openFgaClient = new OpenFgaClient(config);
-        } catch (final FgaInvalidParameterException e) {
-            e.printStackTrace();
-            System.exit(1);
-        }
-
-        // We can't write the authorization model until a valid Store ID has been set.
-        var id = createStore(openFgaClient);
-        if (id.isEmpty()) {
-            System.exit(1);
-        }
-        openFgaClient.setStoreId(id.get());
-
-        id = this.createAuthorizationModel(openFgaClient);
-        if (id.isEmpty()) {
-            System.exit(1);
-        }
-        openFgaClient.setAuthorizationModelId(id.get());
-    }
 
     /** Deletes all tuples in the {@link #deleteQueue}, from the OpenFGA API, and clears the queue. */
     protected void teardown() {
@@ -121,35 +98,6 @@ public class BenchmarkHelper {
     }
 
     /**
-     * Creates a new Store VIA the OpenFGA API.
-     *
-     * @param client Client used to interact with the OpenFGA API.
-     *
-     * @return ID of the created store, or an empty optional if the store could not be created.
-     */
-    private Optional<String> createStore(final @NonNull OpenFgaClient client) {
-        final var body = new CreateStoreRequest();
-        body.setName(UUID.randomUUID().toString());
-
-        try {
-            return client.createStore(body).get().getId().describeConstable();
-        } catch (final ExecutionException e) {
-            final var cause = e.getCause();
-
-            if (cause instanceof FgaApiValidationError) {
-                System.err.println("Response Data:\t" + ((FgaApiValidationError) cause).getResponseData());
-            } else {
-                e.printStackTrace();
-            }
-
-            return Optional.empty();
-        } catch (final FgaInvalidParameterException | InterruptedException e) {
-            e.printStackTrace();
-            return Optional.empty();
-        }
-    }
-
-    /**
      * Creates one or more users and optionally adds them to OpenFGA VIA its API.
      *
      * @param totalUsers Total number of users to create.
@@ -202,20 +150,18 @@ public class BenchmarkHelper {
      */
     protected void writeToOpenFGA(final @NonNull ClientWriteRequest body) {
         try {
-            final var response = openFgaClient.write(body, null).get();
+            final var response = this.getClient().write(body, null).get();
             if (response.getStatusCode() != 200) {
                 System.err.println(response.getRawResponse());
                 System.exit(1);
             }
-        } catch (final FgaInvalidParameterException | InterruptedException e) {
+        } catch (final Exception e) {
             e.printStackTrace();
-            System.exit(1);
-        } catch (final ExecutionException e) {
-            final var cause = e.getCause();
-            if (cause instanceof FgaApiValidationError) {
-                System.err.println("Validation Error: " + ((FgaApiValidationError) cause).getResponseData());
-            } else {
-                e.printStackTrace();
+
+            if (e instanceof ExecutionException) {
+                if (e.getCause() instanceof FgaApiValidationError) {
+                    System.err.println("Validation Error: " + ((FgaApiValidationError) e.getCause()).getResponseData());
+                }
             }
 
             System.exit(1);
@@ -223,51 +169,95 @@ public class BenchmarkHelper {
     }
 
     /**
+     * <p>
      * Creates a new Authorization Model within OpenFGA, using the Authorization Model file located at
      * {@link #MODEL_FILE_PATH}.
+     * </p>
      *
      * @param client {@link OpenFgaClient} to create the Authorization Model with.
      * @return ID of the created Authorization Model, or an empty {@link Optional} if the creation failed.
+     *
+     * @throws FgaInvalidParameterException If there's an issue creating the Authorization Model. See {@link OpenFgaClient#writeAuthorizationModel(WriteAuthorizationModelRequest)}.
+     * @throws ExecutionException If there's an issue creating the Authorization Model. See {@link CompletableFuture#get()}.
+     * @throws InterruptedException If there's an issue creating the Authorization Model. See {@link CompletableFuture#get()}.
+     * @throws IOException If there's an issue reading the Authorization Model file.
+     * @throws NullPointerException If {@link #MODEL_FILE_PATH} is blank or if the input stream is null.
      */
-    private Optional<String> createAuthorizationModel(final @NonNull OpenFgaClient client) {
+    private Optional<String> createAuthorizationModel(final @NonNull OpenFgaClient client) throws FgaInvalidParameterException, ExecutionException, InterruptedException, IOException, NullPointerException {
         final var stringBuilder = new StringBuilder();
         try (
-            final var inputStream = this.getClass().getResourceAsStream(MODEL_FILE_PATH);
+            final var inputStream = Objects.requireNonNull(BenchmarkHelper.class.getResourceAsStream(MODEL_FILE_PATH));
             final var inputStreamReader = new InputStreamReader(inputStream);
             final var bufferedReader = new BufferedReader(inputStreamReader);
         ) {
             while (bufferedReader.ready()) {
                 stringBuilder.append(bufferedReader.readLine());
             }
-        } catch (final IOException e) {
-            e.printStackTrace();
-            return Optional.empty();
         }
 
         if (stringBuilder.isEmpty()) {
             throw new RuntimeException("The OpenFGA Authorization Model file is empty.");
         }
 
-        try {
-            return client.writeAuthorizationModel(
-                new ObjectMapper().findAndRegisterModules().readValue(
-                    stringBuilder.toString(),
-                    WriteAuthorizationModelRequest.class
-                )
-            ).get().getAuthorizationModelId().describeConstable();
-        } catch (final FgaInvalidParameterException | InterruptedException | JsonProcessingException e) {
-            e.printStackTrace();
-            return Optional.empty();
-        } catch (final ExecutionException e) {
-            final var cause = e.getCause();
-            if (cause instanceof FgaApiValidationError) {
-                System.err.println("Validation Error: " + ((FgaApiValidationError) cause).getResponseData());
-            } else {
-                e.printStackTrace();
-            }
+        return client.writeAuthorizationModel(
+            new ObjectMapper().findAndRegisterModules().readValue(
+                stringBuilder.toString(),
+                WriteAuthorizationModelRequest.class
+            )
+        ).get().getAuthorizationModelId().describeConstable();
+    }
 
-            return Optional.empty();
+    /**
+     * <p>Creates a new Store within OpenFGA.</p>
+     *
+     * @param client {@link OpenFgaClient} to create the Authorization Model with.
+     * @return ID of the created Store, or an empty {@link Optional} if the creation failed.
+     *
+     * @throws ExecutionException If there's an issue creating the store. See {@link CompletableFuture#get()}.
+     * @throws FgaInvalidParameterException If there's an issue creating the store. See {@link OpenFgaClient#createStore(CreateStoreRequest)}.
+     * @throws InterruptedException If there's an issue creating the store. See {@link CompletableFuture#get()}.
+     */
+    private Optional<String> createStore(final @NonNull OpenFgaClient client) throws ExecutionException, FgaInvalidParameterException, InterruptedException {
+        final var request = new CreateStoreRequest();
+        request.setName(UUID.randomUUID().toString());
+        return client.createStore(request).get().getId().describeConstable();
+    }
+
+    /**
+     * Constructs a new {@link OpenFgaClient} and initializes it with a Store and Authorization Model.
+     *
+     * @return Constructed {@link OpenFgaClient}.
+     *
+     * @throws FgaInvalidParameterException If there's an issue creating the Store or Authorization Model.
+     * @throws ExecutionException If there's an issue creating the Store or Authorization Model.
+     * @throws InterruptedException If there's an issue creating the Store or Authorization Model.
+     * @throws IOException If there's an issue reading the Authorization Model file.
+     * @throws NullPointerException If {@link #MODEL_FILE_PATH} is blank.
+     */
+    public synchronized OpenFgaClient getClient() throws FgaInvalidParameterException, ExecutionException, InterruptedException, IOException, NullPointerException {
+        if (this.openFgaClient != null) {
+            return this.openFgaClient;
         }
+
+        final var config = new ClientConfiguration();
+        config.apiUrl(this.getEnvironmentVariable("OPENFGA_API_URL"));
+        config.credentials(new Credentials(new ApiToken(this.getEnvironmentVariable("OPENFGA_AUTHN_PRESHARED_KEYS"))));
+        final var client = new OpenFgaClient(config);
+
+        var id = this.createStore(client);
+        if (id.isEmpty()) {
+            throw new RuntimeException("There was a failure when creating a Store in OpenFGA. The Store ID is blank.");
+        }
+        client.setStoreId(id.get());
+
+        id = this.createAuthorizationModel(client);
+        if (id.isEmpty()) {
+            throw new RuntimeException("There was a failure when creating an Authorization Model in OpenFGA. The Authorization Model ID is blank.");
+        }
+        client.setAuthorizationModelId(id.get());
+
+        this.openFgaClient = client;
+        return client;
     }
 
     /**

@@ -2,7 +2,7 @@ package com.valkryst.benchmark;
 
 import dev.openfga.sdk.api.client.model.ClientCheckRequest;
 import dev.openfga.sdk.api.client.model.ClientTupleKey;
-import dev.openfga.sdk.errors.FgaInvalidParameterException;
+import dev.openfga.sdk.errors.FgaApiValidationError;
 import org.openjdk.jmh.annotations.*;
 
 import java.util.Queue;
@@ -65,7 +65,7 @@ public class RelationshipLookup extends BenchmarkHelper {
         body._object(tuple.getObject());
 
         try {
-            final var response = super.openFgaClient.check(body, null).get();
+            final var response = super.getClient().check(body, null).get();
 
             if (response.getStatusCode() != 200) {
                 System.err.println("Failed to lookup relationship:\n" + response.getRawResponse());
@@ -76,11 +76,15 @@ public class RelationshipLookup extends BenchmarkHelper {
                 System.err.println("Relationship does not exist, but it should:\n" + response.getRawResponse());
                 System.exit(1);
             }
-        } catch (final FgaInvalidParameterException | InterruptedException e) {
+        } catch (final Exception e) {
             e.printStackTrace();
-            System.exit(1);
-        } catch (final ExecutionException e) {
-            e.getCause().printStackTrace();
+
+            if (e instanceof ExecutionException) {
+                if (e.getCause() instanceof FgaApiValidationError) {
+                    System.err.println("Validation Error: " + ((FgaApiValidationError) e.getCause()).getResponseData());
+                }
+            }
+
             System.exit(1);
         }
     }
@@ -99,7 +103,7 @@ public class RelationshipLookup extends BenchmarkHelper {
         body._object(tuple.getObject());
 
         try {
-            final var response = super.openFgaClient.check(body, null).get();
+            final var response = super.getClient().check(body, null).get();
 
             if (response.getStatusCode() != 200) {
                 System.err.println("Failed to lookup relationship:\n" + response.getRawResponse());
@@ -110,11 +114,15 @@ public class RelationshipLookup extends BenchmarkHelper {
                 System.err.println("Relationship exists, but it should not:\n" + response.getRawResponse());
                 System.exit(1);
             }
-        } catch (final FgaInvalidParameterException | InterruptedException e) {
+        } catch (final Exception e) {
             e.printStackTrace();
-            System.exit(1);
-        } catch (final ExecutionException e) {
-            e.getCause().printStackTrace();
+
+            if (e instanceof ExecutionException) {
+                if (e.getCause() instanceof FgaApiValidationError) {
+                    System.err.println("Validation Error: " + ((FgaApiValidationError) e.getCause()).getResponseData());
+                }
+            }
+
             System.exit(1);
         }
     }

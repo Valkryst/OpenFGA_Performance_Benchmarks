@@ -5,7 +5,6 @@ import dev.openfga.sdk.api.client.model.ClientTupleKey;
 import dev.openfga.sdk.api.client.model.ClientTupleKeyWithoutCondition;
 import dev.openfga.sdk.api.client.model.ClientWriteRequest;
 import dev.openfga.sdk.errors.FgaApiValidationError;
-import dev.openfga.sdk.errors.FgaInvalidParameterException;
 import org.openjdk.jmh.annotations.*;
 
 import java.util.ArrayList;
@@ -93,24 +92,21 @@ public class TransitiveRelationshipLookup extends BenchmarkHelper {
             body.deletes(deleteQueue);
 
             try {
-                final var response = super.openFgaClient.write(body, null).get();
+                final var response = super.getClient().write(body, null).get();
                 if (response.getStatusCode() != 200) {
                     System.err.println("Failed to delete relationship:\n" + response.getRawResponse());
                     System.exit(1);
                 }
-            } catch (final FgaInvalidParameterException | InterruptedException e) {
+            } catch (final Exception e) {
                 e.printStackTrace();
-                System.exit(1);
-            } catch (final ExecutionException e) {
-                final var cause = e.getCause();
-                if (cause instanceof FgaApiValidationError) {
-                    System.err.println("Validation Error: " + ((FgaApiValidationError) cause).getResponseData());
-                    // todo Fix the following error, if time permits:
-                    // Validation Error: {"code":"write_failed_due_to_invalid_input","message":"cannot delete a tuple which does not exist: user: 'group:bbdbe462-19a3-46a7-a1ca-c6c7edcc810a', relation: 'subgroup', object: 'group:3de8b679-e82c-41bb-98d6-f2ea08a8f15b': invalid write input"}
-                } else {
-                    e.printStackTrace();
+
+                if (e instanceof ExecutionException) {
+                    if (e.getCause() instanceof FgaApiValidationError) {
+                        System.err.println("Validation Error: " + ((FgaApiValidationError) e.getCause()).getResponseData());
+                    }
                 }
-//                System.exit(1);
+
+                System.exit(1);
             }
 
             deleteQueue.removeAll(subset);
@@ -131,7 +127,7 @@ public class TransitiveRelationshipLookup extends BenchmarkHelper {
         body._object(tuple.getObject());
 
         try {
-            final var response = super.openFgaClient.check(body, null).get();
+            final var response = super.getClient().check(body, null).get();
 
             if (response.getStatusCode() != 200) {
                 System.err.println("Failed to lookup relationship:\n" + response.getRawResponse());
@@ -142,15 +138,13 @@ public class TransitiveRelationshipLookup extends BenchmarkHelper {
                 System.err.println("Relationship does not exist, but it should:\n" + response.getRawResponse());
                 System.exit(1);
             }
-        } catch (final FgaInvalidParameterException | InterruptedException e) {
+        } catch (final Exception e) {
             e.printStackTrace();
-            System.exit(1);
-        } catch (final ExecutionException e) {
-            final var cause = e.getCause();
-            if (cause instanceof FgaApiValidationError) {
-                System.err.println("Validation Error: " + ((FgaApiValidationError) cause).getResponseData());
-            } else {
-                e.printStackTrace();
+
+            if (e instanceof ExecutionException) {
+                if (e.getCause() instanceof FgaApiValidationError) {
+                    System.err.println("Validation Error: " + ((FgaApiValidationError) e.getCause()).getResponseData());
+                }
             }
 
             System.exit(1);
