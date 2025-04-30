@@ -3,12 +3,14 @@ package com.valkryst.benchmark;
 import dev.openfga.sdk.api.client.model.ClientCheckRequest;
 import dev.openfga.sdk.api.client.model.ClientTupleKey;
 import dev.openfga.sdk.errors.FgaApiValidationError;
+import lombok.extern.log4j.Log4j2;
 import org.openjdk.jmh.annotations.*;
 
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ExecutionException;
 
+@Log4j2
 @State(Scope.Benchmark)
 public class RelationshipLookup extends BenchmarkHelper {
     /**
@@ -77,7 +79,7 @@ public class RelationshipLookup extends BenchmarkHelper {
                 System.exit(1);
             }
         } catch (final Exception e) {
-            e.printStackTrace();
+            log.error(e);
 
             if (e instanceof ExecutionException) {
                 if (e.getCause() instanceof FgaApiValidationError) {
@@ -115,7 +117,7 @@ public class RelationshipLookup extends BenchmarkHelper {
                 System.exit(1);
             }
         } catch (final Exception e) {
-            e.printStackTrace();
+            log.error(e);
 
             if (e instanceof ExecutionException) {
                 if (e.getCause() instanceof FgaApiValidationError) {
