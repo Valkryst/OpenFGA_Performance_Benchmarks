@@ -5,25 +5,28 @@ import dev.openfga.sdk.api.client.OpenFgaClient;
 import dev.openfga.sdk.api.client.model.ClientTupleKey;
 import dev.openfga.sdk.api.client.model.ClientTupleKeyWithoutCondition;
 import dev.openfga.sdk.api.client.model.ClientWriteRequest;
-import dev.openfga.sdk.api.configuration.ApiToken;
 import dev.openfga.sdk.api.configuration.ClientConfiguration;
-import dev.openfga.sdk.api.configuration.Credentials;
 import dev.openfga.sdk.api.model.CreateStoreRequest;
 import dev.openfga.sdk.api.model.WriteAuthorizationModelRequest;
 import dev.openfga.sdk.errors.FgaApiValidationError;
 import dev.openfga.sdk.errors.FgaInvalidParameterException;
 import lombok.NonNull;
+import lombok.extern.log4j.Log4j2;
 
-import java.io.BufferedReader;
 import java.io.IOException;
-import java.io.InputStreamReader;
-import java.util.*;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 
+@Log4j2
 public class BenchmarkHelper {
     /** Path to the OpenFGA Authorization Model file. */
-    private static final String MODEL_FILE_PATH = "/openfga/model.json";
+    private static final String MODEL_FILE_PATH = "/app/openfga/model.json";
 
     /** Client used when interacting with the OpenFGA API. */
     private OpenFgaClient openFgaClient;
@@ -184,24 +187,14 @@ public class BenchmarkHelper {
      * @throws NullPointerException If {@link #MODEL_FILE_PATH} is blank or if the input stream is null.
      */
     private Optional<String> createAuthorizationModel(final @NonNull OpenFgaClient client) throws FgaInvalidParameterException, ExecutionException, InterruptedException, IOException, NullPointerException {
-        final var stringBuilder = new StringBuilder();
-        try (
-            final var inputStream = Objects.requireNonNull(BenchmarkHelper.class.getResourceAsStream(MODEL_FILE_PATH));
-            final var inputStreamReader = new InputStreamReader(inputStream);
-            final var bufferedReader = new BufferedReader(inputStreamReader);
-        ) {
-            while (bufferedReader.ready()) {
-                stringBuilder.append(bufferedReader.readLine());
-            }
-        }
-
-        if (stringBuilder.isEmpty()) {
+        final var model = Files.readString(Path.of(MODEL_FILE_PATH));
+        if (model.isEmpty()) {
             throw new RuntimeException("The OpenFGA Authorization Model file is empty.");
         }
 
         return client.writeAuthorizationModel(
             new ObjectMapper().findAndRegisterModules().readValue(
-                stringBuilder.toString(),
+                model,
                 WriteAuthorizationModelRequest.class
             )
         ).get().getAuthorizationModelId().describeConstable();
@@ -241,7 +234,6 @@ public class BenchmarkHelper {
 
         final var config = new ClientConfiguration();
         config.apiUrl(this.getEnvironmentVariable("OPENFGA_API_URL"));
-        config.credentials(new Credentials(new ApiToken(this.getEnvironmentVariable("OPENFGA_AUTHN_PRESHARED_KEYS"))));
         final var client = new OpenFgaClient(config);
 
         var id = this.createStore(client);

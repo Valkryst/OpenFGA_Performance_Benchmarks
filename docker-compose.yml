@@ -14,7 +14,7 @@ services:
       - openfga
     volumes:
       - ./logs:/app/logs
-      - ./volumes/openfga:/tmp/openfga
+      - ./volumes/openfga:/app/openfga
 
   openfga:
     build:
