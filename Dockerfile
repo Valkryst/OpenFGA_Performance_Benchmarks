@@ -11,5 +11,6 @@ FROM eclipse-temurin:22.0.2_9-jdk
 COPY ./volumes/tls_certificates/tls.crt /usr/local/share/ca-certificates
 RUN keytool -import -trustcacerts -alias iam -keystore $JAVA_HOME/lib/security/cacerts -storepass changeit -file /usr/local/share/ca-certificates/tls.crt -noprompt
 
+WORKDIR /app
 COPY --from=build /app/target/benchmarks.jar benchmarks.jar
-ENTRYPOINT ["java", "-jar", "benchmarks.jar", "-vEXTRA"]
+ENTRYPOINT ["java", "-jar", "benchmarks.jar"]
