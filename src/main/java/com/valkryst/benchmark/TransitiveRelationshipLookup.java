@@ -5,6 +5,7 @@ import dev.openfga.sdk.api.client.model.ClientTupleKey;
 import dev.openfga.sdk.api.client.model.ClientTupleKeyWithoutCondition;
 import dev.openfga.sdk.api.client.model.ClientWriteRequest;
 import dev.openfga.sdk.errors.FgaApiValidationError;
+import lombok.extern.log4j.Log4j2;
 import org.openjdk.jmh.annotations.*;
 
 import java.util.ArrayList;
@@ -14,6 +15,7 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ExecutionException;
 
+@Log4j2
 @State(Scope.Benchmark)
 public class TransitiveRelationshipLookup extends BenchmarkHelper {
     /**
@@ -98,7 +100,7 @@ public class TransitiveRelationshipLookup extends BenchmarkHelper {
                     System.exit(1);
                 }
             } catch (final Exception e) {
-                e.printStackTrace();
+                log.error(e);
 
                 if (e instanceof ExecutionException) {
                     if (e.getCause() instanceof FgaApiValidationError) {
@@ -139,7 +141,7 @@ public class TransitiveRelationshipLookup extends BenchmarkHelper {
                 System.exit(1);
             }
         } catch (final Exception e) {
-            e.printStackTrace();
+            log.error(e);
 
             if (e instanceof ExecutionException) {
                 if (e.getCause() instanceof FgaApiValidationError) {
