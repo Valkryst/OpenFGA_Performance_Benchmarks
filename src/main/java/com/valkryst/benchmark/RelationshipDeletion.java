@@ -2,11 +2,13 @@ package com.valkryst.benchmark;
 
 import dev.openfga.sdk.api.client.model.ClientTupleKeyWithoutCondition;
 import dev.openfga.sdk.api.client.model.ClientWriteRequest;
+import lombok.extern.log4j.Log4j2;
 import org.openjdk.jmh.annotations.*;
 
 import java.util.List;
 import java.util.NoSuchElementException;
 
+@Log4j2
 @State(Scope.Benchmark)
 public class RelationshipDeletion extends BenchmarkHelper {
     /**
@@ -45,7 +47,7 @@ public class RelationshipDeletion extends BenchmarkHelper {
             System.exit(1);
             return;
         } catch (final Exception e) {
-            e.printStackTrace();
+            log.error(e);
             System.exit(1);
             return;
         }
