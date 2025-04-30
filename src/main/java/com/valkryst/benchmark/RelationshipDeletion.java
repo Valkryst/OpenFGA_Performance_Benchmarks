@@ -8,7 +8,7 @@ import java.util.List;
 import java.util.NoSuchElementException;
 
 @State(Scope.Benchmark)
-public class RelationshipDeletion extends BenchmarkBase {
+public class RelationshipDeletion extends BenchmarkHelper {
     /**
      * <p>
      *     The number of relationships to pre-create and add to the {@link #deleteQueue}, and to write to the OpenFGA

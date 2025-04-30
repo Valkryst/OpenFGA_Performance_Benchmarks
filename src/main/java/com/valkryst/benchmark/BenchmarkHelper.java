@@ -6,9 +6,7 @@ import dev.openfga.sdk.api.client.OpenFgaClient;
 import dev.openfga.sdk.api.client.model.ClientTupleKey;
 import dev.openfga.sdk.api.client.model.ClientTupleKeyWithoutCondition;
 import dev.openfga.sdk.api.client.model.ClientWriteRequest;
-import dev.openfga.sdk.api.configuration.ApiToken;
 import dev.openfga.sdk.api.configuration.ClientConfiguration;
-import dev.openfga.sdk.api.configuration.Credentials;
 import dev.openfga.sdk.api.model.CreateStoreRequest;
 import dev.openfga.sdk.api.model.WriteAuthorizationModelRequest;
 import dev.openfga.sdk.errors.FgaApiValidationError;
@@ -20,10 +18,9 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 
-public class BenchmarkBase {
+public class BenchmarkHelper {
     /** Path to the OpenFGA Authorization Model file. */
     private static final String MODEL_FILE_PATH = "/openfga/model.json";
 
@@ -33,7 +30,7 @@ public class BenchmarkBase {
     /** A list of tuples which have been written to the OpenFGA API, and which must be deleted. */
     protected List<ClientTupleKeyWithoutCondition> deleteQueue = new ArrayList<>();
 
-    public BenchmarkBase() {
+    public BenchmarkHelper() {
         try {
             final var config = new ClientConfiguration();
             config.apiUrl(this.getEnvironmentVariable("OPENFGA_API_URL"));

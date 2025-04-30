@@ -10,7 +10,7 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
 @State(Scope.Benchmark)
-public class RelationshipCreation extends BenchmarkBase {
+public class RelationshipCreation extends BenchmarkHelper {
     /**
      * <p>The number of relationships to pre-create and add to the {@link #writeQueue} before the benchmark begins.</p>
      *

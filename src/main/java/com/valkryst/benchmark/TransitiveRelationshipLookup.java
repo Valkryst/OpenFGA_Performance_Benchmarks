@@ -16,7 +16,7 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ExecutionException;
 
 @State(Scope.Benchmark)
-public class TransitiveRelationshipLookup extends BenchmarkBase{
+public class TransitiveRelationshipLookup extends BenchmarkHelper {
     /**
      * <p>
      *     The number of relationships (in this case, they're group hierarchies) to pre-create and add to the

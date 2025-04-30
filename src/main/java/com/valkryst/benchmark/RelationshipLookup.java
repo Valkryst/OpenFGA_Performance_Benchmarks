@@ -10,7 +10,7 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ExecutionException;
 
 @State(Scope.Benchmark)
-public class RelationshipLookup extends BenchmarkBase {
+public class RelationshipLookup extends BenchmarkHelper {
     /**
      * <p>
      *     The number of relationships to pre-create and add to the {@link #deleteQueue}, and to write to the OpenFGA
