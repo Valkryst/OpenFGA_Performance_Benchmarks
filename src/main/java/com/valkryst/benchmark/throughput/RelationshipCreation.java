@@ -38,7 +38,7 @@ public class RelationshipCreation extends BenchmarkHelper {
     public void benchmark() {
         final var tuple = writeQueue.poll();
         if (tuple == null) {
-            System.err.println("Failed to retrieve tuple from writeQueue. The queue is empty. Try increasing MAX_RELATIONSHIPS.");
+            log.error("Failed to retrieve tuple from writeQueue. The queue is empty. Try increasing MAX_RELATIONSHIPS.");
             System.exit(1);
         }
 
