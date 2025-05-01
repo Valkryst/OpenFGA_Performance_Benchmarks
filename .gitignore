@@ -1,7 +1,8 @@
-/.idea/
-/out/
-/target/
-/volumes/tls_certificates/
+.idea/
+logs/
+out/
+target/
+volumes/tls_certificates/
 
 ~/volumes/cacert/.gitkeep
 ~/volumes/openfga/*
