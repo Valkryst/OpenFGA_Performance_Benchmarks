@@ -4,18 +4,14 @@
 
 * [Local Setup](#local-setup)
   * [Generate Certificates](#generate-certificates)
-  * [Managing Containers](#managing-containers)
-    * [Build](#build)
+  * [Running Tests](#running-tests)
     * [Start](#start)
     * [Stop](#stop)
 * [Misc. Notes](#misc-notes)
   * [OpenFGA API Keys](#openfga-api-keys)
   * [Use of _System.exit(1)_](#use-of-systemexit1)
-  * [Verify OpenFGA Migrations](#verify-openfga-migrations)
 
 ## Local Setup
-
-Create a copy of `.env.example` and name it `.env`. Then fill in the necessary values.
 
 ### Generate Certificates
 
@@ -30,12 +26,12 @@ openssl x509 -inform DER -in ./volumes/cacerts/tls.der -out ./volumes/cacerts/tl
 openssl pkcs12 -in ./volumes/cacerts/tls.jks -nocerts -nodes -out ./volumes/cacerts/tls.key -passin pass:changeit
 ```
 
-### Managing Containers
+### Running Tests
 
 #### Start
 
 ```shell
-docker compose up -d --build
+docker compose up --build
 ```
 
 #### Stop
@@ -54,16 +50,3 @@ docker compose down --remove-orphans
 In almost all instances, I have explicitly used `System.exit(1)` when some part of the benchmark fails. I did this to
 ensure immediate feedback, so that any issues can be addressed and resolved without wasting any time. JMH may be able
 to handle thrown exceptions in the `@Benchmark` functions, but I did not want to take any chances.
-
-### Verify OpenFGA Migrations
-
-If there is ever a need to verify that the DB is not persisted between runs, and/or that the OpenFGA migrations are
-running correctly, you can run the following commands:
-
-```shell
-# Start PostgreSQL, then log in with your DB client of choice and you'll see that the DB is empty.
-docker compose up postgres -d
-
-# Run the OpenFGA migrations, then refresh your view of the DB and you'll see that the DB has been populated.
-docker compose up migrate -d
-```
