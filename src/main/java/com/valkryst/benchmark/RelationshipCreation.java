@@ -2,38 +2,30 @@ package com.valkryst.benchmark;
 
 import dev.openfga.sdk.api.client.model.ClientTupleKey;
 import dev.openfga.sdk.api.client.model.ClientWriteRequest;
+import lombok.extern.log4j.Log4j2;
 import org.openjdk.jmh.annotations.*;
 
 import java.util.List;
 import java.util.Queue;
-import java.util.UUID;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
+@Log4j2
 @State(Scope.Benchmark)
 public class RelationshipCreation extends BenchmarkHelper {
-    /**
-     * <p>The number of relationships to pre-create and add to the {@link #writeQueue} before the benchmark begins.</p>
-     *
-     * <p>
-     *     This is a <i>magic number</i> which I decided based on an educated guess. If the benchmarks pass without
-     *     failing to retrieve a tuple from the {@link #writeQueue}, then we can lower the number by a few thousand
-     *     and re-test. It may save a few seconds, and some RAM, when running the benchmarks.
-     * </p>
-     */
-    private static final int TOTAL_PRECREATED_RELATIONSHIPS = 40_000;
+    /** The number of relationships to pre-create and add to the {@link #writeQueue} before each iteration begins. */
+    private static final int MAX_RELATIONSHIPS = 20_000;
 
     /** A pool of pre-created tuples which can be used to write relationships to the OpenFGA API. */
     private final Queue<ClientTupleKey> writeQueue = new ConcurrentLinkedQueue<>();
 
-    @Setup
-    public void setup() {
-        for (int i = 0 ; i < TOTAL_PRECREATED_RELATIONSHIPS ; i++) {
-            final var tuple = new ClientTupleKey();
-            tuple.user("user:" + UUID.randomUUID());
-            tuple.relation("reader");
-            tuple._object("report:" + UUID.randomUUID());
-            writeQueue.offer(tuple);
+    @Setup(Level.Iteration)
+    public void setupTrial() {
+        final int tuplesToCreate = MAX_RELATIONSHIPS - writeQueue.size();
+        if (tuplesToCreate <= 0) {
+            return;
         }
+
+        writeQueue.addAll(super.createUsers(tuplesToCreate, 1000, false));
     }
 
     @TearDown
@@ -45,13 +37,12 @@ public class RelationshipCreation extends BenchmarkHelper {
     public void benchmark() {
         final var tuple = writeQueue.poll();
         if (tuple == null) {
-            System.err.println("Failed to retrieve tuple from writeQueue. The queue is empty. Try increasing TOTAL_PRECREATED_RELATIONSHIPS.");
+            System.err.println("Failed to retrieve tuple from writeQueue. The queue is empty. Try increasing MAX_RELATIONSHIPS.");
             System.exit(1);
         }
 
         final var body = new ClientWriteRequest();
         body.writes(List.of(tuple));
-
         super.writeToOpenFGA(body);
 
         super.deleteQueue.add(tuple);
