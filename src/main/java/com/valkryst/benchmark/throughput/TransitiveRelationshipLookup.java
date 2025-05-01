@@ -35,7 +35,7 @@ public class TransitiveRelationshipLookup extends BenchmarkHelper {
     private static final int HIERARCHY_DEPTH = 5;
 
     /** A list of tuples which have been written to the OpenFGA API, and which can be used to lookup relationships. */
-    private final Queue<ClientTupleKey> lookupQueue = new ConcurrentLinkedQueue<>();
+    private final Queue<ClientCheckRequest> lookupQueue = new ConcurrentLinkedQueue<>();
 
     /** UUID of the report to lookup. This is the same for all groups, just to make things easy. */
     private final String reportUUID = UUID.randomUUID().toString();
@@ -53,7 +53,12 @@ public class TransitiveRelationshipLookup extends BenchmarkHelper {
          */
         for (int i = 1 ; i != TOTAL_PRECREATED_HIERARCHIES ; i++) {
             final var leaf = groups.get((i * HIERARCHY_DEPTH) - 1);
-            lookupQueue.offer(leaf);
+
+            final var request = new ClientCheckRequest();
+            request.user(leaf.getUser());
+            request.relation(leaf.getRelation());
+            request._object("report:" + reportUUID);
+            lookupQueue.offer(request);
 
             // We need to be able to determine if the leaf has access to a report VIA the highest level group, so we
             // create that relationship here.
@@ -87,19 +92,14 @@ public class TransitiveRelationshipLookup extends BenchmarkHelper {
 
     @Benchmark
     public void benchmark() {
-        final var tuple = lookupQueue.poll();
-        if (tuple == null) {
-            log.error("Failed to retrieve tuple from lookupQueue. The queue is empty. Try increasing TOTAL_PRECREATED_HIERARCHIES.");
+        final var request = lookupQueue.poll();
+        if (request == null) {
+            log.error("Failed to retrieve request from lookupQueue. The queue is empty. Try increasing TOTAL_PRECREATED_HIERARCHIES.");
             System.exit(1);
         }
 
-        final var body = new ClientCheckRequest();
-        body.user(tuple.getUser());
-        body.relation(tuple.getRelation());
-        body._object(tuple.getObject());
-
         try {
-            final var response = super.getClient().check(body, null).get();
+            final var response = super.getClient().check(request, null).get();
 
             if (response.getStatusCode() != 200) {
                 log.error("Failed to lookup relationship:\n{}", response.getRawResponse());
