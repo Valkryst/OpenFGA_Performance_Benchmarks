@@ -2,7 +2,6 @@ package com.valkryst.benchmark.throughput;
 
 import com.valkryst.benchmark.BenchmarkHelper;
 import dev.openfga.sdk.api.client.model.ClientCheckRequest;
-import dev.openfga.sdk.api.client.model.ClientTupleKey;
 import dev.openfga.sdk.errors.FgaApiValidationError;
 import lombok.extern.log4j.Log4j2;
 import org.openjdk.jmh.annotations.*;
@@ -18,18 +17,36 @@ public class RelationshipLookup extends BenchmarkHelper {
     private static final int MAX_RELATIONSHIPS = 20_000;
 
     /** A list of tuples which have been written to the OpenFGA API, and which can be used to lookup relationships. */
-    private final Queue<ClientTupleKey> existentLookupQueue = new ConcurrentLinkedQueue<>();
+    private final Queue<ClientCheckRequest> existentLookupQueue = new ConcurrentLinkedQueue<>();
 
     /** A list of tuples which <i>have not</i> been written to the OpenFGA API, and which can be used to lookup relationships. */
-    private final Queue<ClientTupleKey> nonExistentLookupQueue = new ConcurrentLinkedQueue<>();
+    private final Queue<ClientCheckRequest> nonExistentLookupQueue = new ConcurrentLinkedQueue<>();
 
     @Setup(Level.Iteration)
     public void setup() {
-        final var users = super.createUsers(MAX_RELATIONSHIPS, true);
-        existentLookupQueue.addAll(users);
+        // Populate the existent queue.
+        var users = super.createUsers(MAX_RELATIONSHIPS, true);
         super.deleteQueue.addAll(users);
 
-        nonExistentLookupQueue.addAll(super.createUsers(MAX_RELATIONSHIPS, false));
+        for (final var user : users) {
+            final var request = new ClientCheckRequest();
+            request.user(user.getUser());
+            request.relation(user.getRelation());
+            request._object(user.getObject());
+
+            existentLookupQueue.add(request);
+        }
+
+        // Populate the non-existent queue.
+        users = super.createUsers(MAX_RELATIONSHIPS, false);
+        for (final var user : users) {
+            final var request = new ClientCheckRequest();
+            request.user(user.getUser());
+            request.relation(user.getRelation());
+            request._object(user.getObject());
+
+            nonExistentLookupQueue.add(request);
+        }
     }
 
     @TearDown
@@ -42,19 +59,14 @@ public class RelationshipLookup extends BenchmarkHelper {
 
     @Benchmark
     public void benchmarkExistingRelationships() {
-        final var tuple = existentLookupQueue.poll();
-        if (tuple == null) {
-            log.error("Failed to retrieve tuple from existentLookupQueue. The queue is empty. Try increasing MAX_RELATIONSHIPS.");
+        final var request = existentLookupQueue.poll();
+        if (request == null) {
+            log.error("Failed to retrieve request from existentLookupQueue. The queue is empty. Try increasing MAX_RELATIONSHIPS.");
             System.exit(1);
         }
 
-        final var body = new ClientCheckRequest();
-        body.user(tuple.getUser());
-        body.relation(tuple.getRelation());
-        body._object(tuple.getObject());
-
         try {
-            final var response = super.getClient().check(body, null).get();
+            final var response = super.getClient().check(request, null).get();
 
             if (response.getStatusCode() != 200) {
                 log.error("Failed to lookup relationship:\n{}", response.getRawResponse());
@@ -80,19 +92,14 @@ public class RelationshipLookup extends BenchmarkHelper {
 
     @Benchmark
     public void benchmarkNonexistentRelationships() {
-        final var tuple = nonExistentLookupQueue.poll();
-        if (tuple == null) {
-            log.error("Failed to retrieve tuple from nonexistentLookupQueue. The queue is empty. Try increasing MAX_RELATIONSHIPS.");
+        final var request = nonExistentLookupQueue.poll();
+        if (request == null) {
+            log.error("Failed to retrieve request from nonexistentLookupQueue. The queue is empty. Try increasing MAX_RELATIONSHIPS.");
             System.exit(1);
         }
 
-        final var body = new ClientCheckRequest();
-        body.user(tuple.getUser());
-        body.relation(tuple.getRelation());
-        body._object(tuple.getObject());
-
         try {
-            final var response = super.getClient().check(body, null).get();
+            final var response = super.getClient().check(request, null).get();
 
             if (response.getStatusCode() != 200) {
                 log.error("Failed to lookup relationship:\n{}", response.getRawResponse());
