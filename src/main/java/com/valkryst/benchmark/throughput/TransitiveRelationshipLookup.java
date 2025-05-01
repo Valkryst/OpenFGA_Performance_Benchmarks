@@ -97,7 +97,7 @@ public class TransitiveRelationshipLookup extends BenchmarkHelper {
             try {
                 final var response = super.getClient().write(body, null).get();
                 if (response.getStatusCode() != 200) {
-                    System.err.println("Failed to delete relationship:\n" + response.getRawResponse());
+                    log.error("Failed to delete relationship:\n{}", response.getRawResponse());
                     System.exit(1);
                 }
             } catch (final Exception e) {
@@ -105,7 +105,7 @@ public class TransitiveRelationshipLookup extends BenchmarkHelper {
 
                 if (e instanceof ExecutionException) {
                     if (e.getCause() instanceof FgaApiValidationError) {
-                        System.err.println("Validation Error: " + ((FgaApiValidationError) e.getCause()).getResponseData());
+                        log.error("Validation Error: {}", ((FgaApiValidationError) e.getCause()).getResponseData());
                     }
                 }
 
@@ -120,7 +120,7 @@ public class TransitiveRelationshipLookup extends BenchmarkHelper {
     public void benchmark() {
         final var tuple = lookupQueue.poll();
         if (tuple == null) {
-            System.err.println("Failed to retrieve tuple from lookupQueue. The queue is empty. Try increasing TOTAL_PRECREATED_HIERARCHIES.");
+            log.error("Failed to retrieve tuple from lookupQueue. The queue is empty. Try increasing TOTAL_PRECREATED_HIERARCHIES.");
             System.exit(1);
         }
 
@@ -133,12 +133,12 @@ public class TransitiveRelationshipLookup extends BenchmarkHelper {
             final var response = super.getClient().check(body, null).get();
 
             if (response.getStatusCode() != 200) {
-                System.err.println("Failed to lookup relationship:\n" + response.getRawResponse());
+                log.error("Failed to lookup relationship:\n{}", response.getRawResponse());
                 System.exit(1);
             }
 
             if (Boolean.FALSE.equals(response.getAllowed())) {
-                System.err.println("Relationship does not exist, but it should:\n" + response.getRawResponse());
+                log.error("Relationship does not exist, but it should:\n{}", response.getRawResponse());
                 System.exit(1);
             }
         } catch (final Exception e) {
@@ -146,7 +146,7 @@ public class TransitiveRelationshipLookup extends BenchmarkHelper {
 
             if (e instanceof ExecutionException) {
                 if (e.getCause() instanceof FgaApiValidationError) {
-                    System.err.println("Validation Error: " + ((FgaApiValidationError) e.getCause()).getResponseData());
+                    log.error("Validation Error: {}", ((FgaApiValidationError) e.getCause()).getResponseData());
                 }
             }
 
