@@ -11,24 +11,13 @@ import java.util.NoSuchElementException;
 @Log4j2
 @State(Scope.Benchmark)
 public class RelationshipDeletion extends BenchmarkHelper {
-    /**
-     * <p>
-     *     The number of relationships to pre-create and add to the {@link #deleteQueue}, and to write to the OpenFGA
-     *     API, before the benchmark begins.
-     * </p>
-     *
-     * <p>
-     *     This is a <i>magic number</i> which I decided based on an educated guess. If the benchmarks pass without
-     *     failing to retrieve a tuple from the {@link #deleteQueue}, then we can lower the number by a few thousand
-     *     and re-test. It may save a few seconds, and some RAM, when running the benchmarks.
-     * </p>
-     */
-    private static final int TOTAL_PRECREATED_RELATIONSHIPS = 40_000;
+    /** The number of relationships to pre-create and add to OpenFGA before each iteration begins. */
+    private static final int MAX_RELATIONSHIPS = 20_000;
 
-    @Setup
+    @Setup(Level.Iteration)
     public void setup() {
         super.deleteQueue.addAll(
-            super.createUsers(TOTAL_PRECREATED_RELATIONSHIPS, 1000, true)
+            super.createUsers(MAX_RELATIONSHIPS, 1000, true)
         );
     }
 
@@ -43,7 +32,7 @@ public class RelationshipDeletion extends BenchmarkHelper {
         try {
             tuple = super.deleteQueue.removeFirst();
         } catch (final NoSuchElementException e) {
-            System.err.println("Failed to retrieve tuple from deleteQueue. The queue is empty. Try increasing TOTAL_PRECREATED_RELATIONSHIPS.");
+            log.error("Failed to retrieve tuple from deleteQueue. The queue is empty. Try increasing MAX_RELATIONSHIPS.");
             System.exit(1);
             return;
         } catch (final Exception e) {
