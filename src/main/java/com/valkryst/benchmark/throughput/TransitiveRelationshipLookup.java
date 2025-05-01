@@ -1,5 +1,6 @@
-package com.valkryst.benchmark;
+package com.valkryst.benchmark.throughput;
 
+import com.valkryst.benchmark.BenchmarkHelper;
 import dev.openfga.sdk.api.client.model.ClientCheckRequest;
 import dev.openfga.sdk.api.client.model.ClientTupleKey;
 import dev.openfga.sdk.api.client.model.ClientTupleKeyWithoutCondition;
