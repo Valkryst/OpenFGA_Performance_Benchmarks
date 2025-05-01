@@ -37,7 +37,7 @@ public class RelationshipDeletion extends BenchmarkHelper {
             System.exit(1);
             return;
         } catch (final Exception e) {
-            log.error(e);
+            log.error("", e);
             System.exit(1);
             return;
         }

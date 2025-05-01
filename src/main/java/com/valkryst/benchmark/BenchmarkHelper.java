@@ -156,7 +156,7 @@ public class BenchmarkHelper {
                 System.exit(1);
             }
         } catch (final Exception e) {
-            log.error(e);
+            log.error("", e);
 
             if (e instanceof ExecutionException) {
                 if (e.getCause() instanceof FgaApiValidationError) {
