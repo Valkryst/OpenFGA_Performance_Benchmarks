@@ -155,15 +155,15 @@ public class BenchmarkHelper {
         try {
             final var response = this.getClient().write(body, null).get();
             if (response.getStatusCode() != 200) {
-                System.err.println(response.getRawResponse());
+                log.error(response.getRawResponse());
                 System.exit(1);
             }
         } catch (final Exception e) {
-            e.printStackTrace();
+            log.error(e);
 
             if (e instanceof ExecutionException) {
                 if (e.getCause() instanceof FgaApiValidationError) {
-                    System.err.println("Validation Error: " + ((FgaApiValidationError) e.getCause()).getResponseData());
+                    log.error("Validation Error: {}", ((FgaApiValidationError) e.getCause()).getResponseData());
                 }
             }
 
