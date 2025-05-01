@@ -3,14 +3,12 @@ package com.valkryst.benchmark.throughput;
 import com.valkryst.benchmark.BenchmarkHelper;
 import dev.openfga.sdk.api.client.model.ClientCheckRequest;
 import dev.openfga.sdk.api.client.model.ClientTupleKey;
-import dev.openfga.sdk.api.client.model.ClientTupleKeyWithoutCondition;
 import dev.openfga.sdk.api.client.model.ClientWriteRequest;
 import dev.openfga.sdk.errors.FgaApiValidationError;
 import lombok.extern.log4j.Log4j2;
 import org.openjdk.jmh.annotations.*;
 
 import java.util.ArrayList;
-import java.util.List;
 import java.util.Queue;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentLinkedQueue;
@@ -31,7 +29,7 @@ public class TransitiveRelationshipLookup extends BenchmarkHelper {
      *     re-test. It may save a few seconds, and some RAM, when running the benchmarks.
      * </p>
      */
-    private static final int TOTAL_PRECREATED_HIERARCHIES = 60_000;
+    private static final int TOTAL_PRECREATED_HIERARCHIES = 20_000;
 
     /** Number of groups to create in each hierarchy. */
     private static final int HIERARCHY_DEPTH = 5;
@@ -39,16 +37,13 @@ public class TransitiveRelationshipLookup extends BenchmarkHelper {
     /** A list of tuples which have been written to the OpenFGA API, and which can be used to lookup relationships. */
     private final Queue<ClientTupleKey> lookupQueue = new ConcurrentLinkedQueue<>();
 
-    /** A list of tuples which have been written to the OpenFGA API, and which must be deleted. */
-    private final List<ClientTupleKeyWithoutCondition> deleteQueue = new ArrayList<>();
-
     /** UUID of the report to lookup. This is the same for all groups, just to make things easy. */
     private final String reportUUID = UUID.randomUUID().toString();
 
-    @Setup
+    @Setup(Level.Iteration)
     public void setup() {
         final var groups = super.createGroups(TOTAL_PRECREATED_HIERARCHIES, HIERARCHY_DEPTH);
-        deleteQueue.addAll(groups);
+        super.deleteQueue.addAll(groups);
 
         final var newGroups = new ArrayList<ClientTupleKey>(TOTAL_PRECREATED_HIERARCHIES);
 
@@ -70,7 +65,7 @@ public class TransitiveRelationshipLookup extends BenchmarkHelper {
             tuple._object("report:" + reportUUID);
 
             newGroups.add(tuple);
-            deleteQueue.add(tuple);
+            super.deleteQueue.add(tuple);
         }
 
         while (!newGroups.isEmpty()) {
@@ -87,33 +82,7 @@ public class TransitiveRelationshipLookup extends BenchmarkHelper {
 
     @TearDown
     public void teardown() {
-        // todo Resolve issue, then update this to use super.deleteQueue
-        final var body = new ClientWriteRequest();
-
-        while (!deleteQueue.isEmpty()) {
-            final var subset = deleteQueue.subList(0, Math.min(1000, deleteQueue.size()));
-            body.deletes(deleteQueue);
-
-            try {
-                final var response = super.getClient().write(body, null).get();
-                if (response.getStatusCode() != 200) {
-                    log.error("Failed to delete relationship:\n{}", response.getRawResponse());
-                    System.exit(1);
-                }
-            } catch (final Exception e) {
-                log.error(e);
-
-                if (e instanceof ExecutionException) {
-                    if (e.getCause() instanceof FgaApiValidationError) {
-                        log.error("Validation Error: {}", ((FgaApiValidationError) e.getCause()).getResponseData());
-                    }
-                }
-
-                System.exit(1);
-            }
-
-            deleteQueue.removeAll(subset);
-        }
+        super.teardown();
     }
 
     @Benchmark
