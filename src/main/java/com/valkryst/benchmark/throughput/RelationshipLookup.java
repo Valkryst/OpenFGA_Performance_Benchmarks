@@ -14,20 +14,8 @@ import java.util.concurrent.ExecutionException;
 @Log4j2
 @State(Scope.Benchmark)
 public class RelationshipLookup extends BenchmarkHelper {
-    /**
-     * <p>
-     *     The number of relationships to pre-create and add to the {@link #deleteQueue}, and to write to the OpenFGA
-     *     API, before the benchmark begins.
-     * </p>
-     *
-     * <p>
-     *     This is a <i>magic number</i> which I decided based on an educated guess. If the benchmarks pass without
-     *     failing to retrieve a tuple from the {@link #existentLookupQueue} or {@link #nonExistentLookupQueue}, then we
-     *     can lower the number by a few thousand and re-test. It may save a few seconds, and some RAM, when running the
-     *     benchmarks.
-     * </p>
-     */
-    private static final int TOTAL_PRECREATED_RELATIONSHIPS = 100_000;
+    /** The number of relationships to pre-create and add to the queues before each iteration begins. */
+    private static final int MAX_RELATIONSHIPS = 20_000;
 
     /** A list of tuples which have been written to the OpenFGA API, and which can be used to lookup relationships. */
     private final Queue<ClientTupleKey> existentLookupQueue = new ConcurrentLinkedQueue<>();
@@ -35,15 +23,13 @@ public class RelationshipLookup extends BenchmarkHelper {
     /** A list of tuples which <i>have not</i> been written to the OpenFGA API, and which can be used to lookup relationships. */
     private final Queue<ClientTupleKey> nonExistentLookupQueue = new ConcurrentLinkedQueue<>();
 
-    @Setup
+    @Setup(Level.Iteration)
     public void setup() {
-        final var users = super.createUsers(TOTAL_PRECREATED_RELATIONSHIPS, 1000, true);
+        final var users = super.createUsers(MAX_RELATIONSHIPS, 1000, true);
         existentLookupQueue.addAll(users);
         super.deleteQueue.addAll(users);
 
-        nonExistentLookupQueue.addAll(
-            super.createUsers(TOTAL_PRECREATED_RELATIONSHIPS, 1000, false)
-        );
+        nonExistentLookupQueue.addAll(super.createUsers(MAX_RELATIONSHIPS, 1000, false));
     }
 
     @TearDown
@@ -58,7 +44,7 @@ public class RelationshipLookup extends BenchmarkHelper {
     public void benchmarkExistingRelationships() {
         final var tuple = existentLookupQueue.poll();
         if (tuple == null) {
-            System.err.println("Failed to retrieve tuple from existentLookupQueue. The queue is empty. Try increasing TOTAL_PRECREATED_RELATIONSHIPS.");
+            log.error("Failed to retrieve tuple from existentLookupQueue. The queue is empty. Try increasing MAX_RELATIONSHIPS.");
             System.exit(1);
         }
 
@@ -71,12 +57,12 @@ public class RelationshipLookup extends BenchmarkHelper {
             final var response = super.getClient().check(body, null).get();
 
             if (response.getStatusCode() != 200) {
-                System.err.println("Failed to lookup relationship:\n" + response.getRawResponse());
+                log.error("Failed to lookup relationship:\n{}", response.getRawResponse());
                 System.exit(1);
             }
 
             if (Boolean.FALSE.equals(response.getAllowed())) {
-                System.err.println("Relationship does not exist, but it should:\n" + response.getRawResponse());
+                log.error("Relationship does not exist, but it should:\n{}", response.getRawResponse());
                 System.exit(1);
             }
         } catch (final Exception e) {
@@ -84,7 +70,7 @@ public class RelationshipLookup extends BenchmarkHelper {
 
             if (e instanceof ExecutionException) {
                 if (e.getCause() instanceof FgaApiValidationError) {
-                    System.err.println("Validation Error: " + ((FgaApiValidationError) e.getCause()).getResponseData());
+                    log.error("Validation Error: {}", ((FgaApiValidationError) e.getCause()).getResponseData());
                 }
             }
 
@@ -96,7 +82,7 @@ public class RelationshipLookup extends BenchmarkHelper {
     public void benchmarkNonexistentRelationships() {
         final var tuple = nonExistentLookupQueue.poll();
         if (tuple == null) {
-            System.err.println("Failed to retrieve tuple from nonexistentLookupQueue. The queue is empty. Try increasing TOTAL_PRECREATED_RELATIONSHIPS.");
+            log.error("Failed to retrieve tuple from nonexistentLookupQueue. The queue is empty. Try increasing MAX_RELATIONSHIPS.");
             System.exit(1);
         }
 
@@ -109,12 +95,12 @@ public class RelationshipLookup extends BenchmarkHelper {
             final var response = super.getClient().check(body, null).get();
 
             if (response.getStatusCode() != 200) {
-                System.err.println("Failed to lookup relationship:\n" + response.getRawResponse());
+                log.error("Failed to lookup relationship:\n{}", response.getRawResponse());
                 System.exit(1);
             }
 
             if (Boolean.TRUE.equals(response.getAllowed())) {
-                System.err.println("Relationship exists, but it should not:\n" + response.getRawResponse());
+                log.error("Relationship exists, but it should not:\n{}", response.getRawResponse());
                 System.exit(1);
             }
         } catch (final Exception e) {
@@ -122,7 +108,7 @@ public class RelationshipLookup extends BenchmarkHelper {
 
             if (e instanceof ExecutionException) {
                 if (e.getCause() instanceof FgaApiValidationError) {
-                    System.err.println("Validation Error: " + ((FgaApiValidationError) e.getCause()).getResponseData());
+                    log.error("Validation Error: {}", ((FgaApiValidationError) e.getCause()).getResponseData());
                 }
             }
 
