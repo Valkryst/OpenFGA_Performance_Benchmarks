@@ -2,6 +2,7 @@
 
 ## Table of Contents
 
+* [Results](#results)
 * [Local Setup](#local-setup)
   * [Generate Certificates](#generate-certificates)
   * [Running Tests](#running-tests)
@@ -10,6 +11,18 @@
 * [Misc. Notes](#misc-notes)
   * [OpenFGA API Keys](#openfga-api-keys)
   * [Use of _System.exit(1)_](#use-of-systemexit1)
+
+## Results
+
+These are the results of my most-recent run of the benchmarks.
+
+| Benchmark                                            | Node  | Cnt | Score   | Error   | Units |
+|------------------------------------------------------|-------|-----|---------|---------|-------|
+| RelationshipCreation.benchmark                       | thrpt | 25  | 305.050 | ±10.125 | ops/s |
+| RelationshipDeletion.benchmark                       | thrpt | 25  | 326.905 | ±10.668 | ops/s |
+| RelationshipLookup.benchmarkExistingRelationships    | thrpt | 25  | 470.288 | ±10.133 | ops/s |
+| RelationshipLookup.benchmarkNonexistentRelationships | thrpt | 25  | 457.692 | ±20.235 | ops/s |
+| TransitiveRelationshipLookup.benchmark               | thrpt | 25  | ???     | ±???    | ops/s |
 
 ## Local Setup
 
