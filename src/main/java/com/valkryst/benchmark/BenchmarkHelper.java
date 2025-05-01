@@ -45,7 +45,7 @@ public class BenchmarkHelper {
         final var body = new ClientWriteRequest();
 
         while (!deleteQueue.isEmpty()) {
-            final var subset = new ArrayList<>(deleteQueue.subList(0, Math.min(1000, deleteQueue.size())));
+            final var subset = new ArrayList<>(deleteQueue.subList(0, Math.min(BATCH_SIZE, deleteQueue.size())));
             deleteQueue.removeAll(subset);
 
             body.deletes(subset);
@@ -156,14 +156,13 @@ public class BenchmarkHelper {
                 System.exit(1);
             }
         } catch (final Exception e) {
-            log.error("", e);
-
             if (e instanceof ExecutionException) {
                 if (e.getCause() instanceof FgaApiValidationError) {
                     log.error("Validation Error: {}", ((FgaApiValidationError) e.getCause()).getResponseData());
                 }
             }
 
+            log.error("", e);
             System.exit(1);
         }
     }
