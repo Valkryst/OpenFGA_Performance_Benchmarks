@@ -47,7 +47,7 @@ public class TransitiveRelationshipLookup extends BenchmarkHelper {
 
     @Setup
     public void setup() {
-        final var groups = super.createGroups(TOTAL_PRECREATED_HIERARCHIES, 100, HIERARCHY_DEPTH);
+        final var groups = super.createGroups(TOTAL_PRECREATED_HIERARCHIES, HIERARCHY_DEPTH);
         deleteQueue.addAll(groups);
 
         final var newGroups = new ArrayList<ClientTupleKey>(TOTAL_PRECREATED_HIERARCHIES);

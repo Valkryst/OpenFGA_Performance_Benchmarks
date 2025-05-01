@@ -25,7 +25,10 @@ import java.util.concurrent.ExecutionException;
 
 @Log4j2
 public class BenchmarkHelper {
-    /** Number of {@link ClientTupleKey} objects to create in each batch, when calling {@link #createUsers(int, boolean)}. */
+    /**
+     * Number of {@link ClientTupleKey} objects to create in each batch, when calling {@link #createUsers(int, boolean)}
+     * or {@link #createGroups(int, int)}.
+     */
     private static final int BATCH_SIZE = 1_000;;
 
     /** Path to the OpenFGA Authorization Model file. */
@@ -54,17 +57,12 @@ public class BenchmarkHelper {
      * Creates one or more groups, each with a unique hierarchy of groups.
      *
      * @param totalGroups The total number of groups to create.
-     * @param batchSize Number of groups to create in each batch.
      * @param hierarchyDepth Number of groups to create in each hierarchy.
      * @return Created groups, including their parent groups.
      */
-    protected List<ClientTupleKey> createGroups(int totalGroups, final int batchSize, final int hierarchyDepth) {
+    protected List<ClientTupleKey> createGroups(int totalGroups, final int hierarchyDepth) {
         if (totalGroups < 1) {
             throw new IllegalArgumentException("totalGroups must be greater than or equal to 1.");
-        }
-
-        if (batchSize < 1) {
-            throw new IllegalArgumentException("batchSize must be greater than or equal to 1.");
         }
 
         if (hierarchyDepth < 1) {
@@ -75,9 +73,9 @@ public class BenchmarkHelper {
         final var groups = new ArrayList<ClientTupleKey>(totalGroups * hierarchyDepth);
 
         while (totalGroups > 0) {
-            final var tuples = new ArrayList<ClientTupleKey>(Math.min(totalGroups, batchSize) * hierarchyDepth);
+            final var tuples = new ArrayList<ClientTupleKey>(Math.min(totalGroups, BATCH_SIZE) * hierarchyDepth);
 
-            for (int i = 0 ; i < Math.min(totalGroups, batchSize) ; i++) {
+            for (int i = 0 ; i < Math.min(totalGroups, BATCH_SIZE) ; i++) {
                 var currentUUID = UUID.randomUUID().toString();
                 var nextUUID = UUID.randomUUID().toString();
 
@@ -97,7 +95,7 @@ public class BenchmarkHelper {
             writeToOpenFGA(body);
 
             groups.addAll(tuples);
-            totalGroups -= batchSize;
+            totalGroups -= BATCH_SIZE;
         }
 
         return groups;
