@@ -29,7 +29,7 @@ public class BenchmarkHelper {
      * Number of {@link ClientTupleKey} objects to create in each batch, when calling {@link #createUsers(int, boolean)}
      * or {@link #createGroups(int, int)}.
      */
-    private static final int BATCH_SIZE = 1_000;;
+    private static final int BATCH_SIZE = 100;
 
     /** Path to the OpenFGA Authorization Model file. */
     private static final String MODEL_FILE_PATH = "/app/openfga/model.json";
