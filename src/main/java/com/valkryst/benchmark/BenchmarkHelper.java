@@ -25,6 +25,9 @@ import java.util.concurrent.ExecutionException;
 
 @Log4j2
 public class BenchmarkHelper {
+    /** Number of {@link ClientTupleKey} objects to create in each batch, when calling {@link #createUsers(int, boolean)}. */
+    private static final int BATCH_SIZE = 1_000;;
+
     /** Path to the OpenFGA Authorization Model file. */
     private static final String MODEL_FILE_PATH = "/app/openfga/model.json";
 
@@ -104,25 +107,21 @@ public class BenchmarkHelper {
      * Creates one or more users and optionally adds them to OpenFGA VIA its API.
      *
      * @param totalUsers Total number of users to create.
-     * @param batchSize Number of users to create in each batch.
+     *
      * @return Created users.
      */
-    protected List<ClientTupleKey> createUsers(int totalUsers, final int batchSize, final boolean addToOpenFGA) {
+    protected List<ClientTupleKey> createUsers(int totalUsers, final boolean addToOpenFGA) {
         if (totalUsers < 1) {
             throw new IllegalArgumentException("totalUsers must be greater than or equal to 1.");
-        }
-
-        if (batchSize < 1) {
-            throw new IllegalArgumentException("batchSize must be greater than or equal to 1.");
         }
 
         final var body = new ClientWriteRequest();
         final var users = new ArrayList<ClientTupleKey>(totalUsers);
 
         while (totalUsers > 0) {
-            final var tuples = new ArrayList<ClientTupleKey>(Math.min(totalUsers, batchSize));
+            final var tuples = new ArrayList<ClientTupleKey>(Math.min(totalUsers, 1000));
 
-            for (int i = 0 ; i < Math.min(totalUsers, batchSize) ; i++) {
+            for (int i = 0; i < Math.min(totalUsers, BATCH_SIZE) ; i++) {
                 final var tuple = new ClientTupleKey();
                 tuple.user("user:" + UUID.randomUUID());
                 tuple.relation("reader");
@@ -132,7 +131,7 @@ public class BenchmarkHelper {
 
             if (!addToOpenFGA) {
                 users.addAll(tuples);
-                totalUsers -= batchSize;
+                totalUsers -= BATCH_SIZE;
                 continue;
             }
 
@@ -140,7 +139,7 @@ public class BenchmarkHelper {
             writeToOpenFGA(body);
 
             users.addAll(tuples);
-            totalUsers -= batchSize;
+            totalUsers -= BATCH_SIZE;
         }
 
         return users;

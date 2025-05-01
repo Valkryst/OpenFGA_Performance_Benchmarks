@@ -25,11 +25,11 @@ public class RelationshipLookup extends BenchmarkHelper {
 
     @Setup(Level.Iteration)
     public void setup() {
-        final var users = super.createUsers(MAX_RELATIONSHIPS, 1000, true);
+        final var users = super.createUsers(MAX_RELATIONSHIPS, true);
         existentLookupQueue.addAll(users);
         super.deleteQueue.addAll(users);
 
-        nonExistentLookupQueue.addAll(super.createUsers(MAX_RELATIONSHIPS, 1000, false));
+        nonExistentLookupQueue.addAll(super.createUsers(MAX_RELATIONSHIPS, false));
     }
 
     @TearDown

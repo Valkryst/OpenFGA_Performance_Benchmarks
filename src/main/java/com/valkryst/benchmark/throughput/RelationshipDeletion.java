@@ -18,7 +18,7 @@ public class RelationshipDeletion extends BenchmarkHelper {
     @Setup(Level.Iteration)
     public void setup() {
         super.deleteQueue.addAll(
-            super.createUsers(MAX_RELATIONSHIPS, 1000, true)
+            super.createUsers(MAX_RELATIONSHIPS, true)
         );
     }
 

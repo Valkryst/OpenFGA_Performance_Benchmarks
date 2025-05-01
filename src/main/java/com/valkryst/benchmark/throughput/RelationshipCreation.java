@@ -26,7 +26,7 @@ public class RelationshipCreation extends BenchmarkHelper {
             return;
         }
 
-        writeQueue.addAll(super.createUsers(tuplesToCreate, 1000, false));
+        writeQueue.addAll(super.createUsers(tuplesToCreate, false));
     }
 
     @TearDown
